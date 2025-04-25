@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spin the Wheel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      text-align: center;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      font-size: 16px;
+      padding: 10px;
+      margin: 5px;
+      border-radius: 6px;
+    }
+
+    button {
+      background-color: #333;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    canvas {
+      margin-top: 30px;
+    }
+
+    #output {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Spin the Wheel</h1>
+
+  <!-- Input section -->
+  <input type="text" id="input" placeholder="Type any category" />
+  <button onclick="addOption()">Add</button>
+  <button onclick="spin()">Spin</button>
+  <button onclick="clearOptions()">Clear All</button>
+
+  <div id="currentOptions">Current options: none</div>
+
+  <!-- Canvas for drawing wheel -->
+  <canvas id="wheelCanvas" width="400" height="440"></canvas>
+  <div id="output"></div>
+
+  <!-- Confetti script -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2 + 20;
+    const radius = 180;
+
+    let options = [], colors = [];
+
+    function addOption() {
+      const input = document.getElementById("input");
+      const value = input.value.trim();
+      if (value) {
+        options.push(capitalize(value));
+        colors.push(getRandomColor());
+        input.value = '';
+        updateDisplay();
+        drawWheel();
+      }
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function clearOptions() {
+      options = [];
+      colors = [];
+      updateDisplay();
+      drawWheel();
+      document.getElementById("output").textContent = '';
+    }
+
+    function updateDisplay() {
+      const current = options.length ? options.join(", ") : "none";
+      document.getElementById("currentOptions").textContent = "Current options: " + current;
+    }
+
+    function getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+      return color;
+    }
+
+    function getContrastYIQ(hexcolor) {
+      const r = parseInt(hexcolor.substr(1,2),16);
+      const g = parseInt(hexcolor.substr(3,2),16);
+      const b = parseInt(hexcolor.substr(5,2),16);
+      const yiq = ((r*299)+(g*587)+(b*114))/1000;
+      return (yiq >= 128) ? 'black' : 'white';
+    }
+
+    function drawWheel(rotation = 0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const anglePerSlice = 2 * Math.PI / options.length;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(rotation);
+
+      for (let i = 0; i < options.length; i++) {
+        const start = i * anglePerSlice;
+        const end = start + anglePerSlice;
+
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, start, end);
+        ctx.closePath();
+        ctx.fillStyle = colors[i];
+        ctx.fill();
+
+        // Add label
+        ctx.save();
+        ctx.rotate(start + anglePerSlice / 2);
+        ctx.translate(radius - 65, 0);
+        ctx.rotate(-start - anglePerSlice / 2);
+        ctx.fillStyle = getContrastYIQ(colors[i]);
+        ctx.font = "bold 14px Roboto";
+        ctx.textAlign = "center";
+        wrapText(ctx, options[i], 0, 0, 80, 16);
+        ctx.restore();
+      }
+
+      ctx.restore();
+
+      // Draw triangle pointer (top)
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY - radius - 10);
+      ctx.lineTo(centerX - 10, centerY - radius - 30);
+      ctx.lineTo(centerX + 10, centerY - radius - 30);
+      ctx.closePath();
+      ctx.fillStyle = "#333";
+      ctx.fill();
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(" ");
+      let line = "";
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i] + " ";
+        const testWidth = ctx.measureText(testLine).width;
+        if (testWidth > maxWidth && i > 0) {
+          ctx.fillText(line, x, y);
+          line = words[i] + " ";
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    function spin() {
+      if (options.length === 0) {
+        alert("Please add options first.");
+        return;
+      }
+
+      const selected = Math.floor(Math.random() * options.length);
+      const sliceAngle = 360 / options.length;
+      const middleAngle = sliceAngle / 2;
+      const totalSpins = 12; // more spins = slower
+      const stopAngle = 360 * totalSpins - (selected * sliceAngle + middleAngle);
+
+      const duration = 6000; // 6 seconds
+      const fps = 60;
+      const totalFrames = (duration / 1000) * fps;
+      let frame = 0;
+
+      function animate() {
+        const progress = frame / totalFrames;
+        const eased = 1 - Math.pow(1 - progress, 5);
+        const currentAngle = (eased * stopAngle) % 360;
+        drawWheel((currentAngle - 90) * Math.PI / 180); // align with top triangle
+        frame++;
+
+        if (frame < totalFrames) {
+          requestAnimationFrame(animate);
+        } else {
+          confetti({ particleCount: 120, spread: 60, origin: { y: 0.5 } });
+          document.getElementById("output").textContent = "You got: " + options[selected];
+        }
+      }
+
+      animate();
+    }
+
+    drawWheel(); // Initial draw
+  </script>
+</body>
+</html>

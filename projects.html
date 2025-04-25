@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Projects | Edris Flores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+
+    header {
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    nav a {
+      color: white;
+      margin: 0 15px;
+      text-decoration: none;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    main {
+      padding: 2rem;
+      text-align: center;
+    }
+
+    h1, h2 {
+      margin-bottom: 20px;
+    }
+
+    .button-container {
+      margin-bottom: 2rem;
+    }
+
+    .project-button {
+      background-color: #333;
+      color: white;
+      padding: 12px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .project-button:hover {
+      background-color: #555;
+    }
+
+    .project-content {
+      display: none;
+      margin-top: 2rem;
+      animation: fadeIn 0.5s ease;
+    }
+
+    iframe {
+      width: 90%;
+      max-width: 900px;
+      height: 500px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .close-button {
+      margin-top: 15px;
+      background-color: #888;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .close-button:hover {
+      background-color: #555;
+    }
+
+    @keyframes fadeIn {
+      from {opacity: 0;}
+      to {opacity: 1;}
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>My Projects</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="about.html">About Me</a>
+      <a href="japan.html">Japan</a>
+      <a href="projects.html">Projects</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="button-container">
+      <button class="project-button" onclick="showProject('wheel')">View Spin the Wheel</button>
+      <button class="project-button" onclick="showProject('forher')">View For Her</button>
+    </div>
+
+    <!-- Project Sections -->
+    <div id="wheel" class="project-content">
+      <h2>Spin the Wheel</h2>
+      <iframe src="wheel.html" title="Spin the Wheel"></iframe>
+      <br />
+      <button class="close-button" onclick="closeProjects()">Close</button>
+    </div>
+
+    <div id="forher" class="project-content">
+      <h2>For Her</h2>
+      <iframe src="https://z3phyrus76.github.io/ForHer/" title="For Her Project"></iframe>
+      <br />
+      <button class="close-button" onclick="closeProjects()">Close</button>
+    </div>
+  </main>
+
+  <script>
+    function showProject(projectId) {
+      const contents = document.getElementsByClassName('project-content');
+      for (let i = 0; i < contents.length; i++) {
+        contents[i].style.display = 'none';
+      }
+      document.getElementById(projectId).style.display = 'block';
+    }
+
+    function closeProjects() {
+      const contents = document.getElementsByClassName('project-content');
+      for (let i = 0; i < contents.length; i++) {
+        contents[i].style.display = 'none';
+      }
+    }
+  </script>
+
+</body>
+</html>

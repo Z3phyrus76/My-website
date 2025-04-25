@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Japan 2025 Gallery | Edris Flores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+
+    header {
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    nav a {
+      color: white;
+      margin: 0 15px;
+      text-decoration: none;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    main {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    h2 {
+      margin-top: 60px;
+      margin-bottom: 20px;
+    }
+
+    .slideshow-container {
+      max-width: 700px;
+      height: 400px;
+      margin: auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slides {
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      position: absolute;
+      top: 0;
+      left: 0;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: opacity 1s ease;
+    }
+
+    .dots {
+      margin-top: 15px;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .dot {
+      height: 12px;
+      width: 12px;
+      margin: 0 5px;
+      background-color: #bbb;
+      border-radius: 50%;
+      display: inline-block;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .dot:hover {
+      background-color: #555;
+    }
+
+    .active {
+      background-color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Japan 2025 Gallery</h1>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="about.html">About Me</a>
+      <a href="japan.html">Japan</a>
+      <a href="projects.html">Projects</a>
+    </nav>
+  </header>
+
+  <main>
+    <h2>Places I Visited</h2>
+    <div class="slideshow-container" id="places-slideshow"></div>
+    <div class="dots" id="places-dots"></div>
+
+    <h2>Food I Ate</h2>
+    <div class="slideshow-container" id="food-slideshow"></div>
+    <div class="dots" id="food-dots"></div>
+  </main>
+
+  <script>
+    const allFiles = [
+      "Food_1.jpeg", "Food_2.jpeg", "Food_3.jpeg", "Food_4.jpeg",
+      "Food_5.jpeg", "Food_6.jpeg", "Food_7.jpeg", "Food_8.jpeg",
+      "Japan_1.jpeg", "Japan_2.jpeg", "Japan_3.jpeg", "Japan_4.jpeg",
+      "Japan_5.jpeg", "Japan_6.jpeg", "Japan_7.jpeg", "Japan_8.jpeg",
+      "Japan_9.jpeg", "Japan_10.jpeg", "Japan_11.jpeg", "Japan_12.jpeg",
+      "Japan_13.jpeg", "Japan_14.jpeg", "Japan_15.jpeg", "Japan_16.jpeg",
+      "Japan_17.jpeg", "Japan_18.jpeg", "Japan_19.jpeg", "Japan_20.jpeg",
+      "Japan_21.jpeg", "Japan_22.jpeg", "Japan_23.mp4", "Japan_24.jpeg",
+      "Japan_25.jpeg", "Japan_26.jpeg", "Japan_27.jpeg", "Japan_28.jpeg",
+      "Japan_29.jpeg", "Japan_30.jpeg"
+    ];
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+    shuffleArray(allFiles);
+
+    const imageExtensions = [".jpeg", ".jpg", ".png"];
+    const videoExtensions = [".mp4"];
+
+    function buildGallery(sectionId, keyword) {
+      const container = document.getElementById(`${sectionId}-slideshow`);
+      const dotsContainer = document.getElementById(`${sectionId}-dots`);
+      const slides = [];
+
+      const matchingFiles = allFiles.filter(f => f.toLowerCase().includes(keyword.toLowerCase()));
+      matchingFiles.forEach((file, index) => {
+        const path = `Japan 2025 Photos/${file}`;
+        let media;
+
+        if (imageExtensions.some(ext => file.endsWith(ext))) {
+          media = document.createElement("img");
+          media.src = path;
+        } else {
+          media = document.createElement("video");
+          media.src = path;
+          media.controls = true;
+          media.muted = true;
+        }
+
+        media.className = "slides";
+        media.style.opacity = 0;
+        if (index === 0) media.style.opacity = 1;
+        container.appendChild(media);
+        slides.push(media);
+
+        const dot = document.createElement("span");
+        dot.className = "dot" + (index === 0 ? " active" : "");
+        dot.setAttribute("tabindex", "-1");
+        dot.onclick = function () {
+          showSlide(sectionId, index + 1);
+        };
+        dotsContainer.appendChild(dot);
+      });
+
+      window[`${sectionId}SlideIndex`] = 1;
+      window[`${sectionId}Slides`] = slides;
+      autoAdvance(sectionId);
+    }
+
+    function showSlide(sectionId, n) {
+      const slides = window[`${sectionId}Slides`];
+      const dots = document.getElementById(`${sectionId}-dots`).getElementsByClassName("dot");
+      const indexName = `${sectionId}SlideIndex`;
+      const total = slides.length;
+
+      if (n > total) n = 1;
+      if (n < 1) n = total;
+      window[indexName] = n;
+
+      for (let i = 0; i < total; i++) {
+        slides[i].style.opacity = 0;
+        dots[i].classList.remove("active");
+      }
+
+      slides[n - 1].style.opacity = 1;
+      dots[n - 1].classList.add("active");
+
+      if (slides[n - 1].tagName === "VIDEO") {
+        slides[n - 1].currentTime = 0;
+        slides[n - 1].play();
+        slides[n - 1].onended = () => plusSlide(sectionId, 1);
+      }
+    }
+
+    function plusSlide(sectionId, n) {
+      const current = window[`${sectionId}SlideIndex`];
+      showSlide(sectionId, current + n);
+    }
+
+    function autoAdvance(sectionId) {
+      setInterval(() => {
+        const slides = window[`${sectionId}Slides`];
+        const currentIndex = window[`${sectionId}SlideIndex`];
+        const currentSlide = slides[currentIndex - 1];
+
+        if (currentSlide && currentSlide.tagName === "VIDEO" && !currentSlide.ended) return;
+        plusSlide(sectionId, 1);
+      }, 6000);
+    }
+
+    buildGallery("places", "Japan_");
+    buildGallery("food", "Food_");
+  </script>
+</body>
+</html>

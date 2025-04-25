@@ -5,7 +5,6 @@
   <title>Japan 2025 Gallery | Edris Flores</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
-
   <style>
     body {
       font-family: 'Roboto', sans-serif;
@@ -89,8 +88,8 @@
     }
   </style>
 </head>
-<body>
 
+<body>
   <header>
     <h1>Japan 2025 Gallery</h1>
     <nav>
@@ -113,8 +112,10 @@
 
   <script>
     const allFiles = [
+      // Food
       "Food_1.jpeg", "Food_2.jpeg", "Food_3.jpeg", "Food_4.jpeg",
       "Food_5.jpeg", "Food_6.jpeg", "Food_7.jpeg", "Food_8.jpeg",
+      // Places
       "Japan_1.jpeg", "Japan_2.jpeg", "Japan_3.jpeg", "Japan_4.jpeg",
       "Japan_5.jpeg", "Japan_6.jpeg", "Japan_7.jpeg", "Japan_8.jpeg",
       "Japan_9.jpeg", "Japan_10.jpeg", "Japan_11.jpeg", "Japan_12.jpeg",
@@ -125,12 +126,14 @@
       "Japan_29.jpeg", "Japan_30.jpeg"
     ];
 
+    // Shuffle the array so images appear in random order
     function shuffleArray(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
       }
     }
+
     shuffleArray(allFiles);
 
     const imageExtensions = [".jpeg", ".jpg", ".png"];
@@ -143,7 +146,7 @@
 
       const matchingFiles = allFiles.filter(f => f.toLowerCase().includes(keyword.toLowerCase()));
       matchingFiles.forEach((file, index) => {
-        const path = `japan-2025-photos/${file}`;
+        const path = `japan-2025-photos/${file}`; // ✅ Folder name MUST match GitHub folder exactly
         let media;
 
         if (imageExtensions.some(ext => file.endsWith(ext))) {
@@ -165,9 +168,7 @@
         const dot = document.createElement("span");
         dot.className = "dot" + (index === 0 ? " active" : "");
         dot.setAttribute("tabindex", "-1");
-        dot.onclick = function () {
-          showSlide(sectionId, index + 1);
-        };
+        dot.onclick = () => showSlide(sectionId, index + 1);
         dotsContainer.appendChild(dot);
       });
 
@@ -179,8 +180,8 @@
     function showSlide(sectionId, n) {
       const slides = window[`${sectionId}Slides`];
       const dots = document.getElementById(`${sectionId}-dots`).getElementsByClassName("dot");
-      const indexName = `${sectionId}SlideIndex`;
       const total = slides.length;
+      const indexName = `${sectionId}SlideIndex`;
 
       if (n > total) n = 1;
       if (n < 1) n = total;
@@ -211,7 +212,6 @@
         const slides = window[`${sectionId}Slides`];
         const currentIndex = window[`${sectionId}SlideIndex`];
         const currentSlide = slides[currentIndex - 1];
-
         if (currentSlide && currentSlide.tagName === "VIDEO" && !currentSlide.ended) return;
         plusSlide(sectionId, 1);
       }, 6000);

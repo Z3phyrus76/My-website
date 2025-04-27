@@ -13,29 +13,24 @@
       margin: 0;
       padding: 40px 20px;
     }
-
     h1 {
       margin-bottom: 20px;
     }
-
     input, button {
       font-size: 16px;
       padding: 10px;
       margin: 5px;
       border-radius: 6px;
     }
-
     button {
       background-color: #333;
       color: white;
       border: none;
       cursor: pointer;
     }
-
     canvas {
       margin-top: 30px;
     }
-
     #output {
       font-weight: bold;
       font-size: 18px;
@@ -55,11 +50,10 @@
 
   <div id="currentOptions">Current options: none</div>
 
-  <!-- Canvas for drawing wheel -->
   <canvas id="wheelCanvas" width="400" height="440"></canvas>
   <div id="output"></div>
 
-  <!-- Confetti script -->
+  <!-- Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <script>
@@ -71,6 +65,14 @@
 
     let options = [], colors = [];
 
+    // ✅ Press Enter to add option
+    document.getElementById("input").addEventListener("keypress", function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addOption();
+      }
+    });
+
     function addOption() {
       const input = document.getElementById("input");
       const value = input.value.trim();
@@ -81,6 +83,7 @@
         updateDisplay();
         drawWheel();
       }
+      input.focus();  // ✅ Keep focus after adding
     }
 
     function capitalize(str) {
@@ -93,6 +96,7 @@
       updateDisplay();
       drawWheel();
       document.getElementById("output").textContent = '';
+      document.getElementById("input").focus();
     }
 
     function updateDisplay() {
@@ -103,7 +107,9 @@
     function getRandomColor() {
       const letters = '0123456789ABCDEF';
       let color = '#';
-      for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
       return color;
     }
 
@@ -134,7 +140,6 @@
         ctx.fillStyle = colors[i];
         ctx.fill();
 
-        // Add label
         ctx.save();
         ctx.rotate(start + anglePerSlice / 2);
         ctx.translate(radius - 65, 0);
@@ -148,7 +153,7 @@
 
       ctx.restore();
 
-      // Draw triangle pointer (top)
+      // Draw the triangle pointer at the top
       ctx.beginPath();
       ctx.moveTo(centerX, centerY - radius - 10);
       ctx.lineTo(centerX - 10, centerY - radius - 30);
@@ -184,7 +189,7 @@
       const selected = Math.floor(Math.random() * options.length);
       const sliceAngle = 360 / options.length;
       const middleAngle = sliceAngle / 2;
-      const totalSpins = 12; // more spins = slower
+      const totalSpins = 12;
       const stopAngle = 360 * totalSpins - (selected * sliceAngle + middleAngle);
 
       const duration = 6000; // 6 seconds
@@ -194,9 +199,9 @@
 
       function animate() {
         const progress = frame / totalFrames;
-        const eased = 1 - Math.pow(1 - progress, 5);
+        const eased = 1 - Math.pow(1 - progress, 5); // ease out
         const currentAngle = (eased * stopAngle) % 360;
-        drawWheel((currentAngle - 90) * Math.PI / 180); // align with top triangle
+        drawWheel((currentAngle - 90) * Math.PI / 180);
         frame++;
 
         if (frame < totalFrames) {
@@ -210,7 +215,7 @@
       animate();
     }
 
-    drawWheel(); // Initial draw
+    drawWheel(); // Initial drawing
   </script>
 </body>
 </html>

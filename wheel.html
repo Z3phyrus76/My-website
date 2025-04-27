@@ -42,7 +42,7 @@
 <body>
   <h1>Spin the Wheel</h1>
 
-  <!-- Input section -->
+  <!-- Input Section -->
   <input type="text" id="input" placeholder="Type any category" />
   <button onclick="addOption()">Add</button>
   <button onclick="spin()">Spin</button>
@@ -53,7 +53,7 @@
   <canvas id="wheelCanvas" width="400" height="440"></canvas>
   <div id="output"></div>
 
-  <!-- Confetti -->
+  <!-- Confetti Library -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <script>
@@ -65,8 +65,8 @@
 
     let options = [], colors = [];
 
-    // ✅ Press Enter to add option
-    document.getElementById("input").addEventListener("keypress", function(event) {
+    // ✅ Enter key support using keydown
+    document.getElementById("input").addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
         event.preventDefault();
         addOption();
@@ -76,14 +76,16 @@
     function addOption() {
       const input = document.getElementById("input");
       const value = input.value.trim();
+      
       if (value) {
         options.push(capitalize(value));
         colors.push(getRandomColor());
-        input.value = '';
         updateDisplay();
         drawWheel();
       }
-      input.focus();  // ✅ Keep focus after adding
+
+      input.value = '';  // ✅ Always clear input
+      input.focus();     // ✅ Always refocus
     }
 
     function capitalize(str) {
@@ -153,7 +155,7 @@
 
       ctx.restore();
 
-      // Draw the triangle pointer at the top
+      // Draw top triangle
       ctx.beginPath();
       ctx.moveTo(centerX, centerY - radius - 10);
       ctx.lineTo(centerX - 10, centerY - radius - 30);
@@ -192,7 +194,7 @@
       const totalSpins = 12;
       const stopAngle = 360 * totalSpins - (selected * sliceAngle + middleAngle);
 
-      const duration = 6000; // 6 seconds
+      const duration = 6000;
       const fps = 60;
       const totalFrames = (duration / 1000) * fps;
       let frame = 0;
@@ -215,7 +217,7 @@
       animate();
     }
 
-    drawWheel(); // Initial drawing
+    drawWheel(); // Initial draw
   </script>
 </body>
 </html>

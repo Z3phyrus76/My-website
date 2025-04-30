@@ -113,7 +113,9 @@
     <div class="button-container">
       <button class="project-button" onclick="showProject('wheel')">View Spin the Wheel</button>
       <button class="project-button" onclick="showProject('forher')">View For Her</button>
+      <button class="project-button" onclick="showProject('stock')">View Stock Predictor</button>
     </div>
+    
 
     <!-- Project Sections -->
     <div id="wheel" class="project-content">
@@ -129,6 +131,15 @@
       <br />
       <button class="close-button" onclick="closeProjects()">Close</button>
     </div>
+
+    <div id="stock" class="project-content">
+      <h2>Stock Market Predictor</h2>
+      <iframe src="https://z3phyrus76-stock-market-predictor.streamlit.app" title="Stock Market Predictor"></iframe>
+      <br />
+      <button class="close-button" onclick="closeProjects()">Close</button>
+    </div>
+    
+
   </main>
 
   <script>

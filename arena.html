@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arena — Guess the Winner (No Add Balls) + Leaderboard</title>
+<style>
+  :root { --bg:#0e0e11; --panel:#1b1b20; --panel2:#2a2a30; --ink:#fff; }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Roboto,Arial}
+  #wrap{position:relative;height:100%;display:grid;place-items:center}
+  canvas{display:block;width:min(100vw,100vh);height:min(100vw,100vh)}
+
+  .hud{position:absolute;inset:auto 0 12px 0;display:flex;gap:8px;justify-content:center;pointer-events:none;flex-wrap:wrap}
+  .hud>*{pointer-events:auto;background:var(--panel);border:1px solid var(--panel2);padding:8px 12px;border-radius:10px;font-weight:600}
+  .stats{position:absolute;top:12px;left:12px;background:var(--panel);border:1px solid var(--panel2);padding:6px 10px;border-radius:10px;font-size:13px}
+
+  #inPlayBar { position:absolute; top:8px; left:0; right:0; display:flex; gap:8px; justify-content:center; align-items:center; }
+  .swatch{width:20px;height:20px;border-radius:50%;border:2px solid #0009;box-shadow:0 0 0 2px #fff3 inset;}
+  .paletteLabel{font-size:12px;background:var(--panel);border:1px solid var(--panel2);padding:4px 8px;border-radius:999px}
+
+  #guessPanel{
+    position:absolute; left:12px; right:12px; bottom:78px; margin:auto;
+    display:flex; flex-direction:column; gap:10px; align-items:center;
+    background:rgba(0,0,0,.45); border:1px solid #ffffff33; border-radius:14px; padding:10px 12px; backdrop-filter: blur(4px);
+  }
+  #guessColors{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .pick{ width:24px; height:24px; border-radius:50%; border:2px solid #0009; box-shadow:0 0 0 2px #fff5 inset; cursor:pointer; transform:scale(1); transition:transform .15s; }
+  .pick:hover{ transform:scale(1.1); }
+  .pick.selected{ outline:3px solid #fff9; }
+
+  .bank{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+  .bank small{opacity:.8}
+  .bank input{ width:90px; padding:6px 8px; border-radius:8px; border:1px solid var(--panel2); background:var(--panel); color:var(--ink); font-weight:700; text-align:center; }
+  .btn{ cursor:pointer; border-radius:10px; padding:8px 12px; border:1px solid var(--panel2); background:var(--panel); color:var(--ink); font-weight:800; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .winner { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; font-weight:800; font-size:clamp(18px,4vw,32px); }
+  .winnerInner { background:rgba(0,0,0,.45); border:1px solid #ffffff33; border-radius:14px; padding:12px 16px; display:flex; align-items:center; gap:12px; backdrop-filter: blur(4px); }
+  .winnerSwatch { width:20px; height:20px; border-radius:50%; border:2px solid #0009; box-shadow:0 0 0 2px #fff9 inset; }
+  .resultMsg{font-weight:800}
+
+  /* Leaderboard card (top-right) */
+  #leaderboardCard{
+    position:absolute; top:12px; right:12px; width:260px;
+    background:#1b1b20; border:1px solid #2a2a30; border-radius:12px; padding:10px;
+    font-size:13px; line-height:1.35;
+  }
+  #leaderboardCard .row{display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-bottom:1px dashed #2a2a30;}
+  #leaderboardCard .header{font-weight:800; margin-bottom:6px;}
+  #leaderboardCard input{
+    flex:1; padding:6px 8px; border-radius:8px; border:1px solid #2a2a30;
+    background:#0e0e11; color:#fff;
+  }
+  #leaderboardCard button{
+    padding:6px 8px; border-radius:8px; border:1px solid #2a2a30; background:#2a2a30; color:#fff; cursor:pointer;
+  }
+</style>
+
+<!-- Supabase client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="wrap">
+  <div id="inPlayBar"><span class="paletteLabel">In the arena:</span></div>
+  <canvas id="game" width="900" height="900" aria-label="Arena"></canvas>
+  <div class="stats" id="stats">Balls: 0 • Spokes: 0</div>
+
+  <!-- Guessing panel (must pick before play) -->
+  <div id="guessPanel">
+    <div class="bank">
+      <div><strong>Bank:</strong> <span id="bank">$0</span></div>
+      <div>Bet: <input id="bet" type="number" min="1" step="1" value="10" aria-label="Bet amount"></div>
+      <small id="odds"></small>
+      <small style="opacity:.75">Tip: pick a color, place your bet, then start the round. Set a name (top-right) to appear on the leaderboard.</small>
+    </div>
+    <div><strong>Who do you think wins?</strong></div>
+    <div id="guessColors"></div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="startBtn" disabled>Start round</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard (top-right) -->
+  <div id="leaderboardCard">
+    <div class="header">Top 10 players</div>
+    <div style="display:flex; gap:6px; margin-bottom:8px;">
+      <input id="playerName" maxlength="24" placeholder="Enter a name (optional)">
+      <button id="saveName">Save name</button>
+    </div>
+    <div id="leaderboard"><div style="opacity:.8;">Loading top scores…</div></div>
+  </div>
+
+  <div class="hud">
+    <button id="pause" class="btn">⏸️ Pause (Space)</button>
+    <button id="reset" class="btn">🔁 New round</button>
+    <button id="resetBank" class="btn">💵 Reset $100</button>
+  </div>
+
+  <div class="winner" id="winner" style="display:none;">
+    <div class="winnerInner">
+      <div class="winnerSwatch" id="winnerSwatch"></div>
+      <div id="winnerText">Winner: …</div>
+      <div class="resultMsg" id="resultMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---- knobs ----
+  const START_BALLS = 10;
+  const DEFAULT_BET = 10;
+  const INITIAL_POOL_SIZE = 60; // vibrant, shuffled
+  const COLLISION_SPEED_MULT = 1.5;
+  const MAX_SPEED = 520;
+
+  // ---- DOM ----
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d', { alpha:false });
+  const statsEl = document.getElementById('stats');
+  const inPlayBar = document.getElementById('inPlayBar');
+  const guessPanel = document.getElementById('guessPanel');
+  const guessColors = document.getElementById('guessColors');
+  const startBtn = document.getElementById('startBtn');
+  const bankEl = document.getElementById('bank');
+  const betInput = document.getElementById('bet');
+  const oddsEl = document.getElementById('odds');
+  const btnPause = document.getElementById('pause');
+  const btnReset = document.getElementById('reset');
+  const btnResetBank = document.getElementById('resetBank');
+  const winnerEl = document.getElementById('winner');
+  const winnerSwatch = document.getElementById('winnerSwatch');
+  const winnerText = document.getElementById('winnerText');
+  const resultMsg = document.getElementById('resultMsg');
+
+  // ---- Supabase wiring (PUT YOUR VALUES) ----
+  const SUPABASE_URL = "https://exbemqrtqmldgsrnczmf.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YmVtcXJ0cW1sZGdzcm5jem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjExMDAsImV4cCI6MjA3MjU5NzEwMH0.TpMDHcMQ5g8xyHgJpi_z7V7HN0I3J6SkNTuqz9ORsCo";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Leaderboard elements
+  const playerNameInput = document.getElementById('playerName');
+  const saveNameBtn = document.getElementById('saveName');
+  const leaderboardBox = document.getElementById('leaderboard');
+
+  function escapeHTML(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
+  function getPlayerName(){ const n = localStorage.getItem('arena_player_name') || ''; return n.trim().slice(0,24); }
+  function setPlayerName(n){ const v = (n||'').trim().slice(0,24); localStorage.setItem('arena_player_name', v || randomGuestName()); }
+  function randomGuestName(){ return "Guest#" + Math.floor(1000 + Math.random()*9000); }
+
+  async function fetchTop10(){
+    leaderboardBox.innerHTML = `<div style="opacity:.8;">Loading top scores…</div>`;
+    const { data, error } = await sb.from('leaderboard_top10').select('*');
+    if (error) { leaderboardBox.innerHTML = `<div style="color:#f66">Couldn't load the leaderboard. Please try again.</div>`; return; }
+    if (!data?.length){ leaderboardBox.innerHTML = `<div style="opacity:.8;">No scores yet. Be the first!</div>`; return; }
+    leaderboardBox.innerHTML = data.map((r,i)=>`
+      <div class="row">
+        <div style="opacity:.85;">${i+1}. ${escapeHTML(r.name)}</div>
+        <div><strong>${r.best_score}</strong></div>
+      </div>
+    `).join('');
+  }
+
+  async function submitScore({ name, score }){
+    name = (name || "").trim() || randomGuestName();
+    name = name.slice(0,24);
+    score = Math.max(0, Math.floor(score||0));
+    const { error } = await sb.from('scores').insert({ name, score });
+    if (error) console.error("submitScore error:", error.message);
+  }
+
+  // Name box init
+  playerNameInput.value = getPlayerName();
+  saveNameBtn.onclick = ()=>{ setPlayerName(playerNameInput.value); playerNameInput.value = getPlayerName(); saveNameBtn.textContent = 'Saved ✓'; setTimeout(()=> saveNameBtn.textContent = 'Save name', 900); };
+
+  // ---- utils ----
+  function fitCanvas(){
+    const size=Math.min(window.innerWidth,window.innerHeight);
+    const dpr=window.devicePixelRatio||1;
+    canvas.style.width=size+'px'; canvas.style.height=size+'px';
+    canvas.width=Math.floor(size*dpr); canvas.height=Math.floor(size*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  fitCanvas(); window.addEventListener('resize', fitCanvas);
+
+  const rand=(a,b)=>a+Math.random()*(b-a);
+  let nextId=1;
+
+  // ---- colors (vibrant shuffled, named) ----
+  const pool=[];                // {hex, used:false, name}
+  const colorNames = new Map(); // hex -> name
+  function hslToHex(h,s,l){
+    const a=s*Math.min(l,1-l);
+    const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1)));return Math.round(255*c).toString(16).padStart(2,'0');};
+    return `#${f(0)}${f(8)}${f(4)}`;
+  }
+  function hueToName(h){
+    if ((h>=345||h<15)) return 'Red';
+    if (h<30)  return 'Orange';
+    if (h<45)  return 'Amber';
+    if (h<65)  return 'Yellow';
+    if (h<85)  return 'Lime';
+    if (h<150) return 'Green';
+    if (h<180) return 'Teal';
+    if (h<200) return 'Cyan';
+    if (h<220) return 'Sky';
+    if (h<245) return 'Blue';
+    if (h<270) return 'Indigo';
+    if (h<290) return 'Violet';
+    if (h<315) return 'Magenta';
+    return 'Pink';
+  }
+  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+  function ensurePool(n){
+    const start=pool.length, block=[];
+    for(let i=start;i<n;i++){
+      const hue=(i*(360/n))%360;
+      const hex=hslToHex(hue,.85,.55);
+      block.push({hex, used:false, name:hueToName(hue)});
+    }
+    shuffle(block);
+    for(const p of block){ pool.push(p); colorNames.set(p.hex,p.name); }
+  }
+  ensurePool(INITIAL_POOL_SIZE);
+
+  function pickUnusedColor(){
+    for(const p of pool){
+      if(!p.used){ p.used=true; updateInPlayBar(); return p.hex; }
+    }
+    ensurePool(pool.length+10);
+    return pickUnusedColor();
+  }
+  function releaseColor(hex){
+    const p=pool.find(p=>p.hex===hex);
+    if(p && p.used){ p.used=false; updateInPlayBar(); }
+  }
+
+  // ---- state ----
+  const state={
+    center:{x:canvas.clientWidth/2,y:canvas.clientHeight/2},
+    arenaR:Math.min(canvas.clientWidth,canvas.clientHeight)*0.45,
+    balls:[],   // {id,x,y,vx,vy,r,color,spawned:false}
+    spokes:[],  // {ownerId, angle}
+    running:false,
+    winnerColor:null,
+    bank:Number(localStorage.getItem('arena_bank')||'200'),
+    startingColors:[],
+    pick:null,
+    payoutMult:0,
+    lastBet:0,
+    lastPayout:0
+  };
+
+  function saveBank(){ localStorage.setItem('arena_bank', String(state.bank)); }
+  function updateBankUI(){ bankEl.textContent = `$${state.bank}`; }
+
+  function setBankTo100(){
+    state.bank = 100;
+    localStorage.setItem('arena_bank','100');
+    updateBankUI();
+  }
+
+  // ---- top bar: only live colors ----
+  function updateInPlayBar(){
+    inPlayBar.querySelectorAll('.swatch').forEach(el=>el.remove());
+    const seen=new Set();
+    for(const b of state.balls){
+      if(seen.has(b.color)) continue;
+      seen.add(b.color);
+      const el=document.createElement('div');
+      el.className='swatch';
+      el.style.background=b.color;
+      el.title = colorNames.get(b.color) || b.color;
+      inPlayBar.appendChild(el);
+    }
+  }
+
+  // ---- round control ----
+  function addInitialBall(){
+    const id=nextId++, ang=rand(0,Math.PI*2), speed=rand(130,200), r=rand(10,16);
+    const rr=rand(0,state.arenaR-60), th=rand(0,Math.PI*2);
+    const x=state.center.x + rr*Math.cos(th);
+    const y=state.center.y + rr*Math.sin(th);
+    const color=pickUnusedColor();
+    state.balls.push({id,x,y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,r,color,spawned:false});
+  }
+
+  // ---- betting guard: cap to bank, hint at $0 ----
+  function enforceBetAndFunds(){
+    let b = Math.max(1, Math.floor(Number(betInput.value) || 1));
+    if (b > state.bank) b = state.bank;          // cap bet to current bank
+    betInput.max = Math.max(1, state.bank);
+    betInput.value = b;
+
+    const noFunds = state.bank <= 0;
+    startBtn.disabled = noFunds || !state.pick;
+
+    if (noFunds) {
+      oddsEl.textContent = 'You’re out of funds. Hit “Reset $100” to keep playing.';
+    } else {
+      oddsEl.textContent = `(Winner pays ×${state.payoutMult}). Good luck!`;
+    }
+  }
+
+  function renderGuessChoices(){
+    guessColors.innerHTML=''; state.pick=null; startBtn.disabled=true;
+    for(const hex of state.startingColors){
+      const el=document.createElement('div');
+      el.className='pick'; el.style.background=hex; el.title=colorNames.get(hex)||hex;
+      el.onclick=()=>{ state.pick=hex; guessColors.querySelectorAll('.pick').forEach(p=>p.classList.remove('selected')); el.classList.add('selected'); enforceBetAndFunds(); };
+      guessColors.appendChild(el);
+    }
+    betInput.value = DEFAULT_BET;
+    enforceBetAndFunds();
+    updateBankUI();
+  }
+
+  function showWinner(colorHex, youWon){
+    const name = colorNames.get(colorHex) || colorHex;
+    winnerSwatch.style.background = colorHex;
+    winnerText.textContent = `Winner: ${name}`;
+    resultMsg.textContent = youWon ? `You won $${state.lastPayout}!` : `You lost $${state.lastBet}.`;
+    winnerEl.style.display = 'flex';
+  }
+  function hideWinner(){ winnerEl.style.display = 'none'; }
+
+  function reset(){
+    for(const b of state.balls) releaseColor(b.color);
+    state.balls=[]; state.spokes=[]; state.winnerColor=null; hideWinner();
+    state.running=false;
+
+    for(let i=0;i<START_BALLS;i++) addInitialBall();
+
+    state.startingColors = state.balls.map(b=>b.color);
+    state.payoutMult = Math.max(1, state.startingColors.length - 1);
+
+    guessPanel.style.display='flex';
+    renderGuessChoices();
+    updateInPlayBar();
+
+    btnPause.textContent='▶️ Play (Space)';
+  }
+
+  // ---- physics helpers ----
+  function reflect(vx,vy,nx,ny){ const dot=vx*nx+vy*ny; return {vx:vx-2*dot*nx, vy:vy-2*dot*ny}; }
+  function rayCircleT(Px,Py,ux,uy,Cx,Cy,R){
+    const dx=Px-Cx, dy=Py-Cy, b=dx*ux+dy*uy, c=dx*dx+dy*dy-R*R, disc=b*b-c;
+    if(disc<0) return null; const t1=-b-Math.sqrt(disc), t2=-b+Math.sqrt(disc);
+    const t=Math.min(t1>0?t1:Infinity, t2>0?t2:Infinity); return isFinite(t)?t:null;
+  }
+  function pointSegDist(Ax,Ay,Bx,By,Qx,Qy){
+    const ABx=Bx-Ax,ABy=By-Ay, len2=ABx*ABx+ABy*ABy;
+    if(len2===0) return Math.hypot(Qx-Ax,Qy-Ay);
+    let t=((Qx-Ax)*ABx+(Qy-Ay)*ABy)/len2; t=Math.max(0,Math.min(1,t));
+    const Px=Ax+t*ABx, Py=Ay+t*ABy; return Math.hypot(Qx-Px,Qy-Py);
+  }
+  function ownedSpokeCount(ballId){ let n=0; for(const s of state.spokes) if(s.ownerId===ballId) n++; return n; }
+  function clampSpeed(b){ const s=Math.hypot(b.vx,b.vy); if(s>MAX_SPEED){ const k=MAX_SPEED/s; b.vx*=k; b.vy*=k; } }
+
+  // ---- simulation ----
+  function addSpoke(owner,angle){
+    angle=(angle%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+    state.spokes.push({ownerId:owner.id, angle});
+    owner.spawned=true;
+  }
+  function addThreeSpokesOnHit(owner,baseAngle){
+    const spread=0.5, offs=[-spread/2,0,spread/2];
+    for(const off of offs) addSpoke(owner, baseAngle+off);
+  }
+
+  function update(dt){
+    const c=state.center, R=state.arenaR;
+
+    // move + wall bounce
+    for(const b of state.balls){
+      b.x+=b.vx*dt; b.y+=b.vy*dt;
+      const dx=b.x-c.x, dy=b.y-c.y, dist=Math.hypot(dx,dy);
+      if(dist+b.r>=R){
+        const nx=dx/dist, ny=dy/dist, hitAngle=Math.atan2(ny,nx);
+        const v=reflect(b.vx,b.vy,nx,ny); b.vx=v.vx; b.vy=v.vy;
+        const overlap=(dist+b.r)-R; b.x-=nx*(overlap+0.5); b.y-=ny*(overlap+0.5);
+        addThreeSpokesOnHit(b, hitAngle);
+      }
+    }
+
+    // ball-ball collisions
+    for(let i=0;i<state.balls.length;i++){
+      for(let j=i+1;j<state.balls.length;j++){
+        const a=state.balls[i], b=state.balls[j];
+        const dx=b.x-a.x, dy=b.y-a.y;
+        const dist=Math.hypot(dx,dy), minDist=a.r+b.r;
+        if(dist>0 && dist<minDist){
+          const nx=dx/dist, ny=dy/dist;
+          const overlap=minDist-dist, push=overlap/2+0.5;
+          a.x-=nx*push; a.y-=ny*push; b.x+=nx*push; b.y+=ny*push;
+
+          const va = a.vx*nx + a.vy*ny;
+          const vb = b.vx*nx + b.vy*ny;
+          const vaAfter = vb, vbAfter = va;
+          const tax = a.vx - va*nx, tay = a.vy - va*ny;
+          const tbx = b.vx - vb*nx, tby = b.vy - vb*ny;
+          a.vx = tax + vaAfter*nx; a.vy = tay + vaAfter*ny;
+          b.vx = tbx + vbAfter*nx; b.vy = tby + vbAfter*ny;
+
+          a.vx *= COLLISION_SPEED_MULT; a.vy *= COLLISION_SPEED_MULT;
+          b.vx *= COLLISION_SPEED_MULT; b.vy *= COLLISION_SPEED_MULT;
+          clampSpeed(a); clampSpeed(b);
+        }
+      }
+    }
+
+    // ball vs spokes (owner cannot cut its own)
+    for(let i=state.balls.length-1;i>=0;i--){
+      const b=state.balls[i];
+      for(let j=state.spokes.length-1;j>=0;j--){
+        const s=state.spokes[j];
+        if(s.ownerId===b.id) continue;
+        const owner=state.balls.find(bb=>bb.id===s.ownerId);
+        if(!owner){ state.spokes.splice(j,1); continue; }
+        const ux=Math.cos(s.angle), uy=Math.sin(s.angle);
+        const t=rayCircleT(owner.x,owner.y,ux,uy,c.x,c.y,R); if(t==null) continue;
+        const ex=owner.x+ux*t, ey=owner.y+uy*t;
+        const d=pointSegDist(owner.x,owner.y,ex,ey,b.x,b.y);
+        if(d<=b.r){ state.spokes.splice(j,1); }
+      }
+    }
+
+    // eliminate balls with no spokes
+    for(let i=state.balls.length-1;i>=0;i--){
+      const b=state.balls[i];
+      if(b.spawned && ownedSpokeCount(b.id)===0){
+        releaseColor(b.color);
+        state.balls.splice(i,1);
+        updateInPlayBar();
+      }
+    }
+
+    // winner & bet settlement + leaderboard submit
+    if(state.balls.length===1 && !state.winnerColor){
+      state.winnerColor = state.balls[0].color;
+
+      let youWon=false; state.lastBet=0; state.lastPayout=0;
+      if(state.pick){
+        let bet = Math.max(1, Math.floor(Number(betInput.value)||DEFAULT_BET));
+        bet = Math.min(bet, state.bank);                        // cap bet to bank
+        state.lastBet = bet;
+
+        if(state.pick === state.winnerColor){
+          const payout = bet * Math.max(1, state.startingColors.length - 1);
+          state.lastPayout = payout;
+          state.bank += payout; youWon = true;
+        } else {
+          state.bank -= bet;
+        }
+        saveBank(); updateBankUI(); enforceBetAndFunds();
+      }
+      showWinner(state.winnerColor, youWon);
+
+      // ⬇️ Post score to Supabase and refresh Top 10
+      const nameForScore = getPlayerName() || randomGuestName();
+      submitScore({ name: nameForScore, score: state.bank })
+        .then(()=> fetchTop10())
+        .catch(()=>{});
+    }
+    if(state.balls.length!==1 && state.winnerColor){ state.winnerColor=null; hideWinner(); }
+  }
+
+  function draw(){
+    const {center:c, arenaR:R}=state;
+    ctx.fillStyle='#0e0e11'; ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+
+    ctx.save(); ctx.translate(c.x,c.y);
+    ctx.beginPath(); ctx.arc(0,0,R,0,Math.PI*2);
+    ctx.strokeStyle='#bfbfc4'; ctx.lineWidth=2; ctx.stroke();
+
+    ctx.lineWidth=3; ctx.lineCap='round'; ctx.strokeStyle='#3f4148';
+    for(const s of state.spokes){
+      const owner=state.balls.find(b=>b.id===s.ownerId); if(!owner) continue;
+      const ux=Math.cos(s.angle), uy=Math.sin(s.angle);
+      const t=rayCircleT(owner.x,owner.y,ux,uy,c.x,c.y,R); if(t==null) continue;
+      ctx.beginPath();
+      ctx.moveTo(owner.x-c.x, owner.y-c.y);
+      ctx.lineTo(owner.x-c.x+ux*t, owner.y-c.y+uy*t);
+      ctx.stroke();
+    }
+
+    for(const b of state.balls){
+      ctx.beginPath(); ctx.arc(b.x-c.x,b.y-c.y,b.r,0,Math.PI*2);
+      ctx.fillStyle=b.color; ctx.fill();
+    }
+    ctx.restore();
+
+    statsEl.textContent=`Balls: ${state.balls.length} • Spokes: ${state.spokes.length}`;
+  }
+
+  // ---- loop & UI ----
+  let last=performance.now();
+  function loop(now){
+    const dt=Math.min(0.033,(now-last)/1000);
+    if(state.running){ update(dt); draw(); } else { draw(); }
+    last=now; requestAnimationFrame(loop);
+  }
+
+  startBtn.onclick=()=>{
+    if(!state.pick) return;
+    guessPanel.style.display='none';
+    state.running = true;
+    btnPause.textContent = '⏸️ Pause (Space)';
+  };
+
+  btnPause.onclick=()=>{
+    state.running=!state.running;
+    btnPause.textContent = state.running ? '⏸️ Pause (Space)' : '▶️ Play (Space)';
+  };
+
+  btnReset.onclick=reset;
+  btnResetBank.onclick=()=>{ setBankTo100(); reset(); };
+
+  betInput.addEventListener('input', enforceBetAndFunds);
+
+  window.addEventListener('keydown',e=>{
+    if(e.code==='Space'){ e.preventDefault(); btnPause.click(); }
+    if(e.key.toLowerCase()==='r'){ btnReset.click(); }
+  });
+
+  // ---- Boot ----
+  (function init(){
+    // Always start with $100 on each visit (fresh page load)
+    setBankTo100();
+
+    // Load leaderboard and name UI
+    fetchTop10();
+    playerNameInput.value = getPlayerName();
+
+    // Start a new round and loop
+    reset();
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+</body>
+</html>

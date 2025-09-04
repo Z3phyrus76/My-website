@@ -36,12 +36,12 @@
       text-align: center;
     }
 
-    h1, h2 {
+    h1 {
       margin-bottom: 20px;
     }
 
     .button-container {
-      margin-bottom: 2rem;
+      margin-top: 2rem;
     }
 
     .project-button {
@@ -59,46 +59,10 @@
     .project-button:hover {
       background-color: #555;
     }
-
-    .project-content {
-      display: none;
-      margin-top: 2rem;
-      animation: fadeIn 0.5s ease;
-    }
-
-    iframe {
-      width: 90%;
-      max-width: 900px;
-      height: 500px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-
-    .close-button {
-      margin-top: 15px;
-      background-color: #888;
-      color: white;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      cursor: pointer;
-    }
-
-    .close-button:hover {
-      background-color: #555;
-    }
-
-    @keyframes fadeIn {
-      from {opacity: 0;}
-      to {opacity: 1;}
-    }
   </style>
 </head>
 
 <body>
-
   <header>
     <h1>My Projects</h1>
     <nav>
@@ -111,53 +75,19 @@
 
   <main>
     <div class="button-container">
-      <button class="project-button" onclick="showProject('wheel')">View Spin the Wheel</button>
-      <button class="project-button" onclick="showProject('forher')">View For Her</button>
-      <button class="project-button" onclick="showProject('stock')">View Stock Predictor</button>
+      <a href="wheel.html" target="_blank">
+        <button class="project-button">View Spin the Wheel</button>
+      </a>
+      <a href="https://z3phyrus76.github.io/ForHer/" target="_blank">
+        <button class="project-button">View Cat</button>
+      </a>
+      <a href="https://z3phyrus76-stock-market-predictor.streamlit.app" target="_blank">
+        <button class="project-button">View Stock Predictor</button>
+      </a>
+      <a href="arena.html" target="_blank">
+        <button class="project-button">View Arena</button>
+      </a>
     </div>
-    
-
-    <!-- Project Sections -->
-    <div id="wheel" class="project-content">
-      <h2>Spin the Wheel</h2>
-      <iframe src="wheel.html" title="Spin the Wheel"></iframe>
-      <br />
-      <button class="close-button" onclick="closeProjects()">Close</button>
-    </div>
-
-    <div id="forher" class="project-content">
-      <h2>For Her</h2>
-      <iframe src="https://z3phyrus76.github.io/ForHer/" title="For Her Project"></iframe>
-      <br />
-      <button class="close-button" onclick="closeProjects()">Close</button>
-    </div>
-
-    <div id="stock" class="project-content">
-      <h2>Stock Market Predictor</h2>
-      <iframe src="https://z3phyrus76-stock-market-predictor.streamlit.app" title="Stock Market Predictor"></iframe>
-      <br />
-      <button class="close-button" onclick="closeProjects()">Close</button>
-    </div>
-    
-
   </main>
-
-  <script>
-    function showProject(projectId) {
-      const contents = document.getElementsByClassName('project-content');
-      for (let i = 0; i < contents.length; i++) {
-        contents[i].style.display = 'none';
-      }
-      document.getElementById(projectId).style.display = 'block';
-    }
-
-    function closeProjects() {
-      const contents = document.getElementsByClassName('project-content');
-      for (let i = 0; i < contents.length; i++) {
-        contents[i].style.display = 'none';
-      }
-    }
-  </script>
-
 </body>
 </html>

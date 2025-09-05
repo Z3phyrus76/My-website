@@ -1,179 +1,133 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Yippie!!!</title>
-  <style>
-    :root{
-      --bg:#ffd6e8;         /* pink background */
-      --ink:#fff;           /* white text */
-      --popup-x-left: 22%;  /* left offset */
-      --popup-x-right: 78%; /* right offset */
-    }
-    *{box-sizing:border-box}
-    html,body{
-      height:100%; margin:0;
-      background:var(--bg); color:var(--ink);
-      font-family:system-ui,Segoe UI,Roboto,Arial;
-      overflow:hidden;
-    }
-    .container{
-      min-height:100%;
-      display:grid;
-      place-items:center;
-      gap:20px;
-      padding:24px;
-      text-align:center;
-      position:relative;
-      z-index:1;
-    }
-    .header_text{
-      font-size:32px;
-      font-weight:800;
-      margin:0;
-      color:var(--ink);
-    }
-    /* Main giraffe gif */
-    .gif_container img{
-      width:min(420px,90vw);
-      height:auto;
-      max-height:60vh;   /* keeps it under 60% of screen height */
-      border-radius:12px;
-      box-shadow:0 6px 18px rgba(0,0,0,.25);
-    }
-    .text{
-      font-size:20px;
-      font-weight:700;
-      color:var(--ink);
-      margin-top:10px;
-    }
+:root{
+  --bg:#ffd6e8;         /* pink background */
+  --ink:#fff;           /* white text */
+  --popup-x-left: 22%;  /* left offset */
+  --popup-x-right: 78%; /* right offset */
+}
+*{box-sizing:border-box}
+html,body{
+  height:100%; margin:0;
+  background:var(--bg); color:var(--ink);
+  font-family:system-ui,Segoe UI,Roboto,Arial;
+  overflow:hidden;
+}
+.container{
+  min-height:100%;
+  display:grid;
+  place-items:center;
+  gap:20px;
+  padding:24px;
+  text-align:center;
+  position:relative;
+  z-index:1;
+}
+.header_text{
+  font-size:32px;
+  font-weight:800;
+  margin:0;
+  color:var(--ink);
+}
+/* Main giraffe gif */
+.gif_container img{
+  width:min(360px,80vw);   /* narrower by default */
+  height:auto;
+  max-height:50vh;         /* smaller cap so it doesn’t dominate */
+  border-radius:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+.text{
+  font-size:20px;
+  font-weight:700;
+  color:var(--ink);
+  margin-top:10px;
+}
 
-    /* Shared popup styles */
-    .popup{ position:fixed; z-index:0; }
-    .popup img{
-      width:230px; 
-      max-width:32vw;
-      height:auto;
-      max-height:30vh;   /* limit popup size */
-      border-radius:12px;
-      box-shadow:0 6px 18px rgba(0,0,0,.25);
-    }
+/* Shared popup styles */
+.popup{ position:fixed; z-index:0; }
+.popup img{
+  width:180px; max-width:28vw;
+  height:auto;
+  max-height:22vh;         /* smaller than before */
+  border-radius:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
 
-    /* --- Side giraffes --- */
-    .from-left{
-      top:50%; left:-320px; transform:translateY(-50%);
-      animation: slideInLeft 1.4s ease-out forwards;
-      animation-delay:.6s;
-    }
-    @keyframes slideInLeft {
-      0%{ left:-320px; opacity:0; }
-      100%{ left:40px; opacity:1; }
-    }
-    .from-right{
-      top:50%; right:-320px; transform:translateY(-50%);
-      animation: slideInRight 1.4s ease-out forwards;
-      animation-delay:.6s;
-    }
-    @keyframes slideInRight {
-      0%{ right:-320px; opacity:0; }
-      100%{ right:40px; opacity:1; }
-    }
+/* --- Side giraffes --- */
+.from-left{
+  top:50%; left:-260px; transform:translateY(-50%);
+  animation: slideInLeft 1.4s ease-out forwards;
+  animation-delay:.6s;
+}
+@keyframes slideInLeft {
+  0%{ left:-260px; opacity:0; }
+  100%{ left:20px; opacity:1; }
+}
+.from-right{
+  top:50%; right:-260px; transform:translateY(-50%);
+  animation: slideInRight 1.4s ease-out forwards;
+  animation-delay:.6s;
+}
+@keyframes slideInRight {
+  0%{ right:-260px; opacity:0; }
+  100%{ right:20px; opacity:1; }
+}
 
-    /* --- Bottom pop-ups --- */
-    .bottom-pop{
-      bottom:-300px;
-      transform:translateX(-50%);
-      animation: popUp 1.5s cubic-bezier(.2,.8,.2,1.05) forwards;
-      animation-delay:.9s;
-    }
-    @keyframes popUp {
-      0%{ bottom:-300px; opacity:0; }
-      60%{ bottom:48px; opacity:1; }
-      80%{ bottom:28px; }
-      100%{ bottom:36px; }
-    }
-    .bottom-left{ left:var(--popup-x-left); }
-    .bottom-right{ left:var(--popup-x-right); }
+/* --- Bottom pop-ups --- */
+.bottom-pop{
+  bottom:-300px;
+  transform:translateX(-50%);
+  animation: popUp 1.5s cubic-bezier(.2,.8,.2,1.05) forwards;
+  animation-delay:.9s;
+}
+@keyframes popUp {
+  0%{ bottom:-300px; opacity:0; }
+  60%{ bottom:32px; opacity:1; }
+  80%{ bottom:22px; }
+  100%{ bottom:28px; }
+}
+.bottom-left{ left:var(--popup-x-left); }
+.bottom-right{ left:var(--popup-x-right); }
 
-    /* --- Top pop-downs --- */
-    .top-pop{
-      top:-300px;
-      transform:translateX(-50%);
-      animation: popDown 1.5s cubic-bezier(.2,.8,.2,1.05) forwards;
-      animation-delay:1s;
-    }
-    @keyframes popDown {
-      0%{ top:-300px; opacity:0; }
-      60%{ top:60px; opacity:1; }
-      80%{ top:40px; }
-      100%{ top:50px; }
-    }
-    .top-left{ left:var(--popup-x-left); }
-    .top-right{ left:var(--popup-x-right); }
+/* --- Top pop-downs --- */
+.top-pop{
+  top:-300px;
+  transform:translateX(-50%);
+  animation: popDown 1.5s cubic-bezier(.2,.8,.2,1.05) forwards;
+  animation-delay:1s;
+}
+@keyframes popDown {
+  0%{ top:-300px; opacity:0; }
+  60%{ top:48px; opacity:1; }
+  80%{ top:34px; }
+  100%{ top:40px; }
+}
+.top-left{ left:var(--popup-x-left); }
+.top-right{ left:var(--popup-x-right); }
 
-    /* Small screens (phones & tablets) */
-    @media (max-width:920px){
-      .from-left,.from-right{ display:none; }
+/* Small screens */
+@media (max-width:920px){
+  .from-left,.from-right{ display:none; }
 
-      /* Shrink popup giraffes */
-      .popup img{ 
-        width:140px; 
-        max-width:24vw; 
-        max-height:20vh;
-      }
+  /* Shrink popups */
+  .popup img{ 
+    width:110px; 
+    max-width:22vw; 
+    max-height:16vh;
+  }
 
-      /* Reposition so they don’t overlap text */
-      .bottom-left{ left:25%; }
-      .bottom-right{ left:75%; }
-      .top-left{ left:25%; top:70px; }
-      .top-right{ left:75%; top:70px; }
+  /* Adjust placement */
+  .bottom-left{ left:25%; }
+  .bottom-right{ left:75%; }
+  .top-left{ left:25%; top:60px; }
+  .top-right{ left:75%; top:60px; }
 
-      /* Shrink main gif more */
-      .gif_container img{
-        width:90%;
-        max-height:40vh;
-      }
+  /* Shrink main gif more */
+  .gif_container img{
+    width:80%;
+    max-height:35vh;
+  }
 
-      /* Make header smaller so it doesn’t clash */
-      .header_text{
-        font-size:24px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1 class="header_text">Yippie!!!</h1>
-    <div class="gif_container">
-      <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExejJhaXNweGd0aHU1enB4ZHlsajNvcWJiZXhhemppOXhtb3NuOTE0OSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/HnYWNVA412Qd75WY49/giphy.gif" 
-           alt="Cute giraffe" />
-    </div>
-    <p class="text">Can’t wait to see you on Saturday 13 <3</p>
-  </div>
-
-  <!-- Side giraffes -->
-  <div class="popup from-left">
-    <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2FvMGF3OHhzanNvaGg4ankza3FqY3pqY3dycTVyanF2cDFndjBuZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/1gOadI4RGkrFpbMF7r/giphy.gif" alt="Left giraffe" />
-  </div>
-  <div class="popup from-right">
-    <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2FvMGF3OHhzanNvaGg4ankza3FqY3pqY3dycTVyanF2cDFndjBuZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/1gOadI4RGkrFpbMF7r/giphy.gif" alt="Right giraffe" />
-  </div>
-
-  <!-- Bottom pop-ups -->
-  <div class="popup bottom-pop bottom-left">
-    <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHBtZm8yNDdtZjlwb3d0YnJvaDU5YWJhbWdhd3hnaG5sbnkybnBsMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JmBXdjfIblJDi/giphy.gif" alt="Bottom left giraffe" />
-  </div>
-  <div class="popup bottom-pop bottom-right">
-    <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHBtZm8yNDdtZjlwb3d0YnJvaDU5YWJhbWdhd3hnaG5sbnkybnBsMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JmBXdjfIblJDi/giphy.gif" alt="Bottom right giraffe" />
-  </div>
-
-  <!-- Top pop-downs -->
-  <div class="popup top-pop top-left">
-    <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmQxbTRzbnFhbDR3N2NlZ2V6MjFieW1tZ2h0YzAxdWJ1cWp5bXpvMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xULW8LE3usQAw9kSGc/giphy.gif" alt="Top left giraffe" />
-  </div>
-  <div class="popup top-pop top-right">
-    <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmQxbTRzbnFhbDR3N2NlZ2V6MjFieW1tZ2h0YzAxdWJ1cWp5bXpvMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xULW8LE3usQAw9kSGc/giphy.gif" alt="Top right giraffe" />
-  </div>
-</body>
-</html>
+  /* Resize text */
+  .header_text{ font-size:22px; }
+  .text{ font-size:16px; }
+}

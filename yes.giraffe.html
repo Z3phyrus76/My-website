@@ -17,7 +17,7 @@
       height:100%; margin:0;
       background:var(--bg); color:var(--ink);
       font-family:system-ui,Segoe UI,Roboto,Arial;
-      overflow:hidden; /* we position popups as fixed */
+      overflow:hidden;
     }
 
     .container{
@@ -25,7 +25,6 @@
       display:grid;
       place-items:center;
       gap:18px;
-      /* push content up so bottom text doesn't collide with bottom popups */
       padding:24px 24px calc(180px + env(safe-area-inset-bottom));
       text-align:center;
       position:relative;
@@ -62,14 +61,13 @@
       box-shadow:0 6px 18px rgba(0,0,0,.25);
     }
 
-    /* --- Side giraffes (slide in from edges) --- */
+    /* --- Side giraffes --- */
     .side{
       top:55%;
-      transform:translateY(-50%); /* baseline */
+      transform:translateY(-50%);
     }
     .side-left{
       left:14px;
-      /* start fully off-screen to the left, then slide in */
       transform:translate(-140%, -50%);
       animation: sideInLeft 1.1s ease-out forwards;
       animation-delay:.5s;
@@ -84,10 +82,10 @@
     }
     @keyframes sideInRight { to { transform:translate(0, -50%);} }
 
-    /* --- Bottom pop-ups (parallel) --- */
+    /* --- Bottom pop-ups --- */
     .bottom-pop{
       bottom:calc(30px + env(safe-area-inset-bottom));
-      transform:translate(-50%, 260px); /* start below viewport */
+      transform:translate(-50%, 260px);
       animation: popUp 1.4s cubic-bezier(.2,.8,.2,1.05) forwards;
       animation-delay:.8s;
     }
@@ -95,10 +93,10 @@
     .bottom-left{ left:var(--popup-x-left); }
     .bottom-right{ left:var(--popup-x-right); }
 
-    /* --- Top pop-downs (parallel) --- */
+    /* --- Top pop-downs --- */
     .top-pop{
       top:calc(50px + env(safe-area-inset-top));
-      transform:translate(-50%, -260px); /* start above viewport */
+      transform:translate(-50%, -260px);
       animation: dropIn 1.4s cubic-bezier(.2,.8,.2,1.05) forwards;
       animation-delay:.9s;
     }
@@ -106,7 +104,7 @@
     .top-left{ left:var(--popup-x-left); }
     .top-right{ left:var(--popup-x-right); }
 
-    /* ===== Responsive: phones/tablets ===== */
+    /* ===== Responsive: phones ===== */
     @media (max-width:920px){
       .header_text{ font-size:22px; }
 
@@ -116,20 +114,26 @@
       }
 
       .popup img{
-        width:90px;  max-width:22vw; max-height:14vh;
+        width:90px;  
+        max-width:22vw; 
+        max-height:14vh;
       }
 
-      /* pull anchors inward so left one never clips */
+      /* Make bottom popups bigger */
+      .bottom-pop img{
+        width:120px;
+        max-width:28vw;
+        max-height:18vh;
+      }
+
       :root{
         --popup-x-left: 24%;
         --popup-x-right: 76%;
       }
 
-      /* keep top ones a touch lower so they don't overlap the title */
       .top-pop{ top:68px; }
 
-      /* slightly more bottom padding so text stays above bottom popups */
-      .container{ padding-bottom: calc(200px + env(safe-area-inset-bottom)); }
+      .container{ padding-bottom: calc(220px + env(safe-area-inset-bottom)); }
 
       .text{ font-size:16px; }
     }
@@ -145,7 +149,7 @@
     <p class="text">Can’t wait to see you on Saturday 13 &lt;3</p>
   </div>
 
-  <!-- Side giraffes (now visible on mobile too) -->
+  <!-- Side giraffes -->
   <div class="popup side side-left">
     <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2FvMGF3OHhzanNvaGg4ankza3FqY3pqY3dycTVyanF2cDFndjBuZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/1gOadI4RGkrFpbMF7r/giphy.gif" alt="Left giraffe" />
   </div>

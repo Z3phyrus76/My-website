@@ -8,134 +8,126 @@
     :root{
       --bg:#ffd6e8;         /* pink background */
       --ink:#fff;           /* white text */
-      --popup-x-left: 22%;  /* left offset */
-      --popup-x-right: 78%; /* right offset */
+      --popup-x-left: 20%;  /* left offset (pulled in a bit so it's always visible) */
+      --popup-x-right: 80%; /* right offset */
     }
     *{box-sizing:border-box}
     html,body{
       height:100%; margin:0;
       background:var(--bg); color:var(--ink);
       font-family:system-ui,Segoe UI,Roboto,Arial;
-      overflow:hidden;
+      overflow:hidden; /* we position popups fixed */
     }
+
     .container{
       min-height:100%;
       display:grid;
       place-items:center;
-      gap:20px;
-      padding:24px;
+      gap:18px;
+      /* extra bottom padding = pushes content UP so text doesn't touch bottom popups */
+      padding:24px 24px calc(160px + env(safe-area-inset-bottom));
       text-align:center;
       position:relative;
       z-index:1;
     }
     .header_text{
-      font-size:32px;
+      font-size:28px;
       font-weight:800;
       margin:0;
       color:var(--ink);
     }
-    /* Main giraffe gif */
+
+    /* Main giraffe */
     .gif_container img{
-      width:min(360px,80vw);
+      width:min(340px,78vw);
       height:auto;
-      max-height:50vh;   /* smaller so it doesn’t dominate */
+      max-height:46vh; /* smaller so it never dominates */
       border-radius:12px;
       box-shadow:0 6px 18px rgba(0,0,0,.25);
     }
+
     .text{
-      font-size:20px;
+      font-size:18px;
       font-weight:700;
       color:var(--ink);
-      margin-top:10px;
+      margin-top:6px;   /* a little tighter so it sits higher */
     }
 
-    /* Shared popup styles */
-    .popup{ position:fixed; z-index:0; }
+    /* ===== Popups (top/bottom + left/right) ===== */
+    .popup{ position:fixed; z-index:2; } /* above the centered content */
     .popup img{
-      width:180px; max-width:28vw;
-      height:auto;
-      max-height:22vh;
+      width:160px; max-width:26vw;
+      height:auto; max-height:20vh;
       border-radius:12px;
       box-shadow:0 6px 18px rgba(0,0,0,.25);
     }
 
-    /* --- Side giraffes --- */
+    /* Slide-in from sides (desktop only) */
     .from-left{
-      top:50%; left:-260px; transform:translateY(-50%);
-      animation: slideInLeft 1.4s ease-out forwards;
-      animation-delay:.6s;
+      top:50%; left:-240px; transform:translateY(-50%);
+      animation: slideInLeft 1.2s ease-out forwards; animation-delay:.5s;
     }
-    @keyframes slideInLeft {
-      0%{ left:-260px; opacity:0; }
-      100%{ left:20px; opacity:1; }
-    }
+    @keyframes slideInLeft { 0%{left:-240px;opacity:0;} 100%{left:20px;opacity:1;} }
     .from-right{
-      top:50%; right:-260px; transform:translateY(-50%);
-      animation: slideInRight 1.4s ease-out forwards;
-      animation-delay:.6s;
+      top:50%; right:-240px; transform:translateY(-50%);
+      animation: slideInRight 1.2s ease-out forwards; animation-delay:.5s;
     }
-    @keyframes slideInRight {
-      0%{ right:-260px; opacity:0; }
-      100%{ right:20px; opacity:1; }
-    }
+    @keyframes slideInRight { 0%{right:-240px;opacity:0;} 100%{right:20px;opacity:1;} }
 
-    /* --- Bottom pop-ups --- */
+    /* Bottom pop-ups (parallel) */
     .bottom-pop{
-      bottom:-300px;
+      bottom:-260px;
       transform:translateX(-50%);
-      animation: popUp 1.5s cubic-bezier(.2,.8,.2,1.05) forwards;
-      animation-delay:.9s;
+      animation: popUp 1.4s cubic-bezier(.2,.8,.2,1.05) forwards;
+      animation-delay:.8s;
     }
-    @keyframes popUp {
-      0%{ bottom:-300px; opacity:0; }
-      60%{ bottom:32px; opacity:1; }
-      80%{ bottom:22px; }
-      100%{ bottom:28px; }
+    @keyframes popUp{
+      0%{ bottom:-260px; opacity:0; }
+      60%{ bottom:calc(34px + env(safe-area-inset-bottom)); opacity:1; }
+      80%{ bottom:calc(24px + env(safe-area-inset-bottom)); }
+      100%{ bottom:calc(30px + env(safe-area-inset-bottom)); }
     }
     .bottom-left{ left:var(--popup-x-left); }
     .bottom-right{ left:var(--popup-x-right); }
 
-    /* --- Top pop-downs --- */
+    /* Top pop-downs (parallel) */
     .top-pop{
-      top:-300px;
+      top:-260px;
       transform:translateX(-50%);
-      animation: popDown 1.5s cubic-bezier(.2,.8,.2,1.05) forwards;
-      animation-delay:1s;
+      animation: popDown 1.4s cubic-bezier(.2,.8,.2,1.05) forwards;
+      animation-delay:.9s;
     }
-    @keyframes popDown {
-      0%{ top:-300px; opacity:0; }
-      60%{ top:48px; opacity:1; }
-      80%{ top:34px; }
-      100%{ top:40px; }
+    @keyframes popDown{
+      0%{ top:-260px; opacity:0; }
+      60%{ top:calc(54px + env(safe-area-inset-top)); opacity:1; }
+      80%{ top:calc(40px + env(safe-area-inset-top)); }
+      100%{ top:calc(48px + env(safe-area-inset-top)); }
     }
     .top-left{ left:var(--popup-x-left); }
     .top-right{ left:var(--popup-x-right); }
 
-    /* Small screens */
-    @media (max-width:920px){
+    /* ===== Responsive tweaks ===== */
+    @media (max-width: 920px){
+      /* hide side slide-ins on phones for space */
       .from-left,.from-right{ display:none; }
 
-      /* Shrink popup giraffes */
-      .popup img{ 
-        width:110px; 
-        max-width:22vw; 
-        max-height:16vh;
-      }
-
-      /* Reposition so they don’t overlap text */
-      .bottom-left{ left:25%; }
-      .bottom-right{ left:75%; }
-      .top-left{ left:25%; top:60px; }
-      .top-right{ left:75%; top:60px; }
-
-      /* Shrink main gif more */
-      .gif_container img{
-        width:80%;
-        max-height:35vh;
-      }
-
-      /* Resize text */
       .header_text{ font-size:22px; }
+      .gif_container img{
+        width:78%;
+        max-height:34vh;
+      }
+      .popup img{
+        width:100px; max-width:22vw; max-height:14vh;
+      }
+      /* pull popups further in so left one never clips */
+      :root{
+        --popup-x-left: 24%;
+        --popup-x-right: 76%;
+      }
+      /* make top ones start a touch lower so they don't overlap the title */
+      .top-left, .top-right{ top:68px; }
+      /* give a bit more padding bottom so text sits higher above bottom popups */
+      .container{ padding-bottom: calc(190px + env(safe-area-inset-bottom)); }
       .text{ font-size:16px; }
     }
   </style>
@@ -147,10 +139,10 @@
       <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExejJhaXNweGd0aHU1enB4ZHlsajNvcWJiZXhhemppOXhtb3NuOTE0OSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/HnYWNVA412Qd75WY49/giphy.gif" 
            alt="Cute giraffe" />
     </div>
-    <p class="text">Can’t wait to see you on Saturday 13 <3</p>
+    <p class="text">Can’t wait to see you on Saturday 13 &lt;3</p>
   </div>
 
-  <!-- Side giraffes -->
+  <!-- Side giraffes (desktop only) -->
   <div class="popup from-left">
     <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2FvMGF3OHhzanNvaGg4ankza3FqY3pqY3dycTVyanF2cDFndjBuZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/1gOadI4RGkrFpbMF7r/giphy.gif" alt="Left giraffe" />
   </div>
@@ -158,7 +150,7 @@
     <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2FvMGF3OHhzanNvaGg4ankza3FqY3pqY3dycTVyanF2cDFndjBuZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/1gOadI4RGkrFpbMF7r/giphy.gif" alt="Right giraffe" />
   </div>
 
-  <!-- Bottom pop-ups -->
+  <!-- Bottom pop-ups (parallel) -->
   <div class="popup bottom-pop bottom-left">
     <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHBtZm8yNDdtZjlwb3d0YnJvaDU5YWJhbWdhd3hnaG5sbnkybnBsMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JmBXdjfIblJDi/giphy.gif" alt="Bottom left giraffe" />
   </div>
@@ -166,7 +158,7 @@
     <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZHBtZm8yNDdtZjlwb3d0YnJvaDU5YWJhbWdhd3hnaG5sbnkybnBsMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JmBXdjfIblJDi/giphy.gif" alt="Bottom right giraffe" />
   </div>
 
-  <!-- Top pop-downs -->
+  <!-- Top pop-downs (parallel) -->
   <div class="popup top-pop top-left">
     <img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZmQxbTRzbnFhbDR3N2NlZ2V6MjFieW1tZ2h0YzAxdWJ1cWp5bXpvMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xULW8LE3usQAw9kSGc/giphy.gif" alt="Top left giraffe" />
   </div>

@@ -14,9 +14,7 @@
   .hud>*{pointer-events:auto;background:var(--panel);border:1px solid var(--panel2);padding:8px 12px;border-radius:10px;font-weight:600}
   .stats{position:absolute;top:12px;left:12px;background:var(--panel);border:1px solid var(--panel2);padding:6px 10px;border-radius:10px;font-size:13px}
 
-  #inPlayBar { position:absolute; top:8px; left:0; right:0; display:flex; gap:8px; justify-content:center; align-items:center; }
-  .swatch{width:20px;height:20px;border-radius:50%;border:2px solid #0009;box-shadow:0 0 0 2px #fff3 inset;}
-  .paletteLabel{font-size:12px;background:var(--panel);border:1px solid var(--panel2);padding:4px 8px;border-radius:999px}
+  /* removed the top color bar styles */
 
   #guessPanel{
     position:absolute; left:12px; right:12px; bottom:78px; margin:auto;
@@ -55,14 +53,13 @@
     padding:6px 8px; border-radius:8px; border:1px solid #2a2a30; background:#2a2a30; color:#fff; cursor:pointer;
   }
 
-  /* --- Mobile & small screens --- */
+  /* Mobile tweaks */
   @media (max-width: 640px) {
-    #wrap{ place-items:start center; }                   /* keep room above canvas */
+    #wrap{ place-items:start center; }
     #guessPanel{ bottom:12px; left:8px; right:8px; padding:10px; }
     .stats{ top:8px; left:8px; font-size:12px; padding:4px 8px; }
-    #inPlayBar{ top:6px; gap:6px; }
 
-    /* Collapsible leaderboard on phones */
+    /* collapsible leaderboard */
     #leaderboardCard{
       width:86vw; right:7vw; left:auto; cursor:pointer;
       transition: transform .18s ease, opacity .18s ease, max-height .18s ease;
@@ -84,11 +81,11 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="inPlayBar"><span class="paletteLabel">In the arena:</span></div>
+  <!-- removed the inPlayBar DOM -->
   <canvas id="game" width="900" height="900" aria-label="Arena"></canvas>
   <div class="stats" id="stats">Balls: 0 • Spokes: 0</div>
 
-  <!-- Guessing panel (must pick before play) -->
+  <!-- Guessing panel -->
   <div id="guessPanel">
     <div class="bank">
       <div><strong>Bank:</strong> <span id="bank">$0</span></div>
@@ -103,7 +100,7 @@
     </div>
   </div>
 
-  <!-- Leaderboard (top-right) -->
+  <!-- Leaderboard -->
   <div id="leaderboardCard">
     <div class="header">Top 10 players</div>
     <div style="display:flex; gap:6px; margin-bottom:8px;">
@@ -133,7 +130,7 @@
   // ---- knobs ----
   const START_BALLS = 10;
   const DEFAULT_BET = 10;
-  const INITIAL_POOL_SIZE = 60; // vibrant, shuffled
+  const INITIAL_POOL_SIZE = 60;
   const COLLISION_SPEED_MULT = 1.5;
   const MAX_SPEED = 520;
 
@@ -141,7 +138,6 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d', { alpha:false });
   const statsEl = document.getElementById('stats');
-  const inPlayBar = document.getElementById('inPlayBar');
   const guessPanel = document.getElementById('guessPanel');
   const guessColors = document.getElementById('guessColors');
   const startBtn = document.getElementById('startBtn');
@@ -156,13 +152,12 @@
   const winnerText = document.getElementById('winnerText');
   const resultMsg = document.getElementById('resultMsg');
 
-  // Leaderboard elements
   const playerNameInput = document.getElementById('playerName');
   const saveNameBtn = document.getElementById('saveName');
   const leaderboardBox = document.getElementById('leaderboard');
   const leaderboardCard = document.getElementById('leaderboardCard');
 
-  // ---- Supabase wiring (YOUR VALUES) ----
+  // ---- Supabase ----
   const SUPABASE_URL = "https://exbemqrtqmldgsrnczmf.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YmVtcXJ0cW1sZGdzcm5jem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjExMDAsImV4cCI6MjA3MjU5NzEwMH0.TpMDHcMQ5g8xyHgJpi_z7V7HN0I3J6SkNTuqz9ORsCo";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -193,7 +188,7 @@
     if (error) console.error("submitScore error:", error.message);
   }
 
-  // Name box init
+  // Name UI
   playerNameInput.value = getPlayerName();
   saveNameBtn.onclick = ()=>{ setPlayerName(playerNameInput.value); playerNameInput.value = getPlayerName(); saveNameBtn.textContent = 'Saved ✓'; setTimeout(()=> saveNameBtn.textContent = 'Save name', 900); };
 
@@ -205,11 +200,11 @@
     });
   }
 
-  // ---- utils ----
+  // ---- layout helpers ----
   function fitCanvas(){
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const size = Math.min(vw, vh);                 // square canvas that fits
+    const size = Math.min(vw, vh);
     const dpr  = window.devicePixelRatio || 1;
     canvas.style.width  = size + 'px';
     canvas.style.height = size + 'px';
@@ -226,9 +221,9 @@
   const rand=(a,b)=>a+Math.random()*(b-a);
   let nextId=1;
 
-  // ---- colors (vibrant shuffled, named) ----
-  const pool=[];                // {hex, used:false, name}
-  const colorNames = new Map(); // hex -> name
+  // ---- colors ----
+  const pool=[];                
+  const colorNames = new Map(); 
   function hslToHex(h,s,l){
     const a=s*Math.min(l,1-l);
     const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1)));return Math.round(255*c).toString(16).padStart(2,'0');};
@@ -261,7 +256,10 @@
     shuffle(block);
     for(const p of block){ pool.push(p); colorNames.set(p.hex,p.name); }
   }
-  ensurePool(INITIAL_POOL_SIZE);
+  ensurePool(60);
+
+  // no-op now that the top bar is gone
+  function updateInPlayBar(){}
 
   function pickUnusedColor(){
     for(const p of pool){
@@ -279,8 +277,8 @@
   const state={
     center:{x:canvas.clientWidth/2,y:canvas.clientHeight/2},
     arenaR:Math.min(canvas.clientWidth,canvas.clientHeight)*0.45,
-    balls:[],   // {id,x,y,vx,vy,r,color,spawned:false}
-    spokes:[],  // {ownerId, angle}
+    balls:[],
+    spokes:[],
     running:false,
     winnerColor:null,
     bank:Number(localStorage.getItem('arena_bank')||'200'),
@@ -295,21 +293,6 @@
   function updateBankUI(){ bankEl.textContent = `$${state.bank}`; }
   function setBankTo100(){ state.bank=100; localStorage.setItem('arena_bank','100'); updateBankUI(); }
 
-  // ---- top bar: only live colors ----
-  function updateInPlayBar(){
-    inPlayBar.querySelectorAll('.swatch').forEach(el=>el.remove());
-    const seen=new Set();
-    for(const b of state.balls){
-      if(seen.has(b.color)) continue;
-      seen.add(b.color);
-      const el=document.createElement('div');
-      el.className='swatch';
-      el.style.background=b.color;
-      el.title = colorNames.get(b.color) || b.color;
-      inPlayBar.appendChild(el);
-    }
-  }
-
   // ---- round control ----
   function addInitialBall(){
     const id=nextId++, ang=rand(0,Math.PI*2), speed=rand(130,200), r=rand(10,16);
@@ -320,7 +303,6 @@
     state.balls.push({id,x,y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,r,color,spawned:false});
   }
 
-  // ---- betting guard: cap to bank, hint at $0 ----
   function enforceBetAndFunds(){
     let b = Math.max(1, Math.floor(Number(betInput.value) || 1));
     if (b > state.bank) b = state.bank;
@@ -371,7 +353,6 @@
 
     guessPanel.style.display='flex';
     renderGuessChoices();
-    updateInPlayBar();
 
     btnPause.textContent='▶️ Play (Space)';
   }
@@ -444,7 +425,7 @@
       }
     }
 
-    // ball vs spokes (owner cannot cut its own)
+    // ball vs spokes
     for(let i=state.balls.length-1;i>=0;i--){
       const b=state.balls[i];
       for(let j=state.spokes.length-1;j>=0;j--){
@@ -466,11 +447,10 @@
       if(b.spawned && ownedSpokeCount(b.id)===0){
         releaseColor(b.color);
         state.balls.splice(i,1);
-        updateInPlayBar();
       }
     }
 
-    // winner & bet settlement + leaderboard submit
+    // winner & bet settlement
     if(state.balls.length===1 && !state.winnerColor){
       state.winnerColor = state.balls[0].color;
 
@@ -491,7 +471,6 @@
       }
       showWinner(state.winnerColor, youWon);
 
-      // Post score + refresh Top 10
       const nameForScore = getPlayerName() || randomGuestName();
       submitScore({ name: nameForScore, score: state.bank })
         .then(()=> fetchTop10())
@@ -531,7 +510,7 @@
   // ---- loop & UI ----
   let last=performance.now();
   function loop(now){
-    refreshArenaGeometry();                               // keep geometry synced
+    refreshArenaGeometry();
     const dt=Math.min(0.033,(now-last)/1000);
     if(state.running){ update(dt); draw(); } else { draw(); }
     last=now; requestAnimationFrame(loop);
@@ -560,10 +539,10 @@
 
   // ---- Boot ----
   (function init(){
-    setBankTo100();                // always start with $100 on a fresh visit
-    fetchTop10();                  // load leaderboard
+    setBankTo100();
+    fetchTop10();
     playerNameInput.value = getPlayerName();
-    reset();                       // start a round
+    reset();
     requestAnimationFrame(loop);
   })();
 })();

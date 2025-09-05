@@ -37,12 +37,23 @@
 
   /* Leaderboard card (top-right) */
   #leaderboardCard{
-    position:absolute; top:12px; right:12px; width:260px;
+    position:absolute; top:12px; right:12px;
     background:#1b1b20; border:1px solid #2a2a30; border-radius:12px; padding:10px;
-    font-size:13px; line-height:1.35;
+    font-size:13px; line-height:1.35; z-index:10; width:260px; max-width:75vw;
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
   }
-  #leaderboardCard .row{display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-bottom:1px dashed #2a2a30;}
-  #leaderboardCard .header{font-weight:800; margin-bottom:6px;}
+  /* Smaller/narrower on phones so it hides less of the arena */
+  @media (max-width: 640px){
+    #leaderboardCard{ width:220px; font-size:12px; }
+  }
+
+  #leaderboardCard .header{
+    font-weight:800; margin-bottom:6px;
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    cursor:pointer; user-select:none;
+  }
+  #leaderboardCard .header .hint{ opacity:.7; font-weight:600; font-size:.9em; }
+
   #leaderboardCard input{
     flex:1; padding:6px 8px; border-radius:8px; border:1px solid #2a2a30;
     background:#0e0e11; color:#fff;
@@ -50,6 +61,10 @@
   #leaderboardCard button{
     padding:6px 8px; border-radius:8px; border:1px solid #2a2a30; background:#2a2a30; color:#fff; cursor:pointer;
   }
+
+  /* Collapsed state: hide body; keep a compact header visible & tappable */
+  #leaderboardCard.collapsed #leaderboardBody{ display:none; }
+  #leaderboardCard.collapsed{ padding-bottom:8px; }
 </style>
 
 <!-- Supabase client -->
@@ -57,7 +72,7 @@
 </head>
 <body>
 <div id="wrap">
-  <!-- Arena canvas (no color row at the top anymore) -->
+  <!-- Arena canvas -->
   <canvas id="game" width="900" height="900" aria-label="Arena"></canvas>
   <div class="stats" id="stats">Balls: 0 • Spokes: 0</div>
 
@@ -78,12 +93,17 @@
 
   <!-- Leaderboard -->
   <div id="leaderboardCard">
-    <div class="header">Top 10 players</div>
-    <div style="display:flex; gap:6px; margin-bottom:8px;">
-      <input id="playerName" maxlength="24" placeholder="Enter a name (optional)">
-      <button id="saveName">Save name</button>
+    <div id="leaderboardHeader" class="header">
+      <span>Top 10 players</span>
+      <span class="hint">(tap to expand/collapse)</span>
     </div>
-    <div id="leaderboard"><div style="opacity:.8;">Loading top scores…</div></div>
+    <div id="leaderboardBody">
+      <div style="display:flex; gap:6px; margin-bottom:8px;">
+        <input id="playerName" maxlength="24" placeholder="Enter a name (optional)">
+        <button id="saveName">Save name</button>
+      </div>
+      <div id="leaderboard"><div style="opacity:.8;">Loading top scores…</div></div>
+    </div>
   </div>
 
   <div class="hud">
@@ -129,14 +149,17 @@
   const winnerText = document.getElementById('winnerText');
   const resultMsg = document.getElementById('resultMsg');
 
+  // Leaderboard DOM (for toggle)
+  const lbCard   = document.getElementById('leaderboardCard');
+  const lbHeader = document.getElementById('leaderboardHeader');
+  const playerNameInput = document.getElementById('playerName');
+  const saveNameBtn = document.getElementById('saveName');
+  const leaderboardBox = document.getElementById('leaderboard');
+
   // ---------- Supabase ----------
   const SUPABASE_URL = "https://exbemqrtqmldgsrnczmf.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YmVtcXJ0cW1sZGdzcm5jem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjExMDAsImV4cCI6MjA3MjU5NzEwMH0.TpMDHcMQ5g8xyHgJpi_z7V7HN0I3J6SkNTuqz9ORsCo";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  const playerNameInput = document.getElementById('playerName');
-  const saveNameBtn = document.getElementById('saveName');
-  const leaderboardBox = document.getElementById('leaderboard');
 
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
   function getPlayerName(){ const n = localStorage.getItem('arena_player_name') || ''; return n.trim().slice(0,24); }
@@ -149,7 +172,7 @@
     if (error) { leaderboardBox.innerHTML = `<div style="color:#f66">Couldn't load the leaderboard. Please try again.</div>`; return; }
     if (!data?.length){ leaderboardBox.innerHTML = `<div style="opacity:.8;">No scores yet. Be the first!</div>`; return; }
     leaderboardBox.innerHTML = data.map((r,i)=>`
-      <div class="row">
+      <div class="row" style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed #2a2a30;">
         <div style="opacity:.85;">${i+1}. ${escapeHTML(r.name)}</div>
         <div><strong>${r.best_score}</strong></div>
       </div>
@@ -201,6 +224,21 @@
   }
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
+
+  // ---------- leaderboard collapse toggle ----------
+  function applyLbCollapsed(fromStorage=false){
+    const collapsed = localStorage.getItem('lb_collapsed') === '1';
+    if (collapsed) lbCard.classList.add('collapsed');
+    else lbCard.classList.remove('collapsed');
+    if (!fromStorage) localStorage.setItem('lb_collapsed', collapsed ? '1' : '0');
+  }
+  // initialize from storage
+  applyLbCollapsed(true);
+  // toggle on tap
+  lbHeader.addEventListener('click', ()=>{
+    lbCard.classList.toggle('collapsed');
+    localStorage.setItem('lb_collapsed', lbCard.classList.contains('collapsed') ? '1' : '0');
+  });
 
   // ---------- color pool ----------
   const pool=[];                // {hex, used:false, name}
@@ -475,22 +513,23 @@
     last=now; requestAnimationFrame(loop);
   }
 
+  // Name box + save
+  playerNameInput.value = getPlayerName();
+  saveNameBtn.onclick = ()=>{ setPlayerName(playerNameInput.value); playerNameInput.value = getPlayerName(); saveNameBtn.textContent = 'Saved ✓'; setTimeout(()=> saveNameBtn.textContent = 'Save name', 900); };
+
   startBtn.onclick=()=>{
     if(!state.pick) return;
     guessPanel.style.display='none';
     state.running = true;
     btnPause.textContent = '⏸️ Pause (Space)';
   };
-
   btnPause.onclick=()=>{
     state.running=!state.running;
     btnPause.textContent = state.running ? '⏸️ Pause (Space)' : '▶️ Play (Space)';
   };
-
   btnReset.onclick=reset;
   btnResetBank.onclick=()=>{ setBankTo100(); reset(); };
   betInput.addEventListener('input', enforceBetAndFunds);
-
   window.addEventListener('keydown',e=>{
     if(e.code==='Space'){ e.preventDefault(); btnPause.click(); }
     if(e.key.toLowerCase()==='r'){ btnReset.click(); }
@@ -500,7 +539,6 @@
   (function init(){
     setBankTo100();          // always start $100 on fresh load
     fetchTop10();            // leaderboard
-    playerNameInput.value = getPlayerName();
     reset();                 // first round
     requestAnimationFrame(loop);
   })();

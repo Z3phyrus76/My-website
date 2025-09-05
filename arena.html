@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Arena — Guess the Winner (No Add Balls) + Leaderboard</title>
+<title>Arena — Guess the Winner + Leaderboard</title>
 <style>
   :root { --bg:#0e0e11; --panel:#1b1b20; --panel2:#2a2a30; --ink:#fff; }
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Roboto,Arial}
@@ -13,8 +13,6 @@
   .hud{position:absolute;inset:auto 0 12px 0;display:flex;gap:8px;justify-content:center;pointer-events:none;flex-wrap:wrap}
   .hud>*{pointer-events:auto;background:var(--panel);border:1px solid var(--panel2);padding:8px 12px;border-radius:10px;font-weight:600}
   .stats{position:absolute;top:12px;left:12px;background:var(--panel);border:1px solid var(--panel2);padding:6px 10px;border-radius:10px;font-size:13px}
-
-  /* removed the top color bar styles */
 
   #guessPanel{
     position:absolute; left:12px; right:12px; bottom:78px; margin:auto;
@@ -52,28 +50,6 @@
   #leaderboardCard button{
     padding:6px 8px; border-radius:8px; border:1px solid #2a2a30; background:#2a2a30; color:#fff; cursor:pointer;
   }
-
-  /* Mobile tweaks */
-  @media (max-width: 640px) {
-    #wrap{ place-items:start center; }
-    #guessPanel{ bottom:12px; left:8px; right:8px; padding:10px; }
-    .stats{ top:8px; left:8px; font-size:12px; padding:4px 8px; }
-
-    /* collapsible leaderboard */
-    #leaderboardCard{
-      width:86vw; right:7vw; left:auto; cursor:pointer;
-      transition: transform .18s ease, opacity .18s ease, max-height .18s ease;
-    }
-    #leaderboardCard.collapsed{
-      max-height:40px; overflow:hidden; opacity:.92;
-    }
-    #leaderboardCard .header::after{
-      content:" (tap to expand)"; opacity:.7; font-weight:600;
-    }
-
-    .btn{ padding:7px 10px; }
-    .bank input{ width:80px; }
-  }
 </style>
 
 <!-- Supabase client -->
@@ -81,7 +57,7 @@
 </head>
 <body>
 <div id="wrap">
-  <!-- removed the inPlayBar DOM -->
+  <!-- Arena canvas (no color row at the top anymore) -->
   <canvas id="game" width="900" height="900" aria-label="Arena"></canvas>
   <div class="stats" id="stats">Balls: 0 • Spokes: 0</div>
 
@@ -127,14 +103,15 @@
 
 <script>
 (() => {
-  // ---- knobs ----
+  // ---------- knobs ----------
   const START_BALLS = 10;
   const DEFAULT_BET = 10;
   const INITIAL_POOL_SIZE = 60;
   const COLLISION_SPEED_MULT = 1.5;
   const MAX_SPEED = 520;
+  const TOP_INSET_MOBILE = 120; // px: pushes arena down on small screens
 
-  // ---- DOM ----
+  // ---------- DOM ----------
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d', { alpha:false });
   const statsEl = document.getElementById('stats');
@@ -152,15 +129,14 @@
   const winnerText = document.getElementById('winnerText');
   const resultMsg = document.getElementById('resultMsg');
 
-  const playerNameInput = document.getElementById('playerName');
-  const saveNameBtn = document.getElementById('saveName');
-  const leaderboardBox = document.getElementById('leaderboard');
-  const leaderboardCard = document.getElementById('leaderboardCard');
-
-  // ---- Supabase ----
+  // ---------- Supabase ----------
   const SUPABASE_URL = "https://exbemqrtqmldgsrnczmf.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YmVtcXJ0cW1sZGdzcm5jem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjExMDAsImV4cCI6MjA3MjU5NzEwMH0.TpMDHcMQ5g8xyHgJpi_z7V7HN0I3J6SkNTuqz9ORsCo";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const playerNameInput = document.getElementById('playerName');
+  const saveNameBtn = document.getElementById('saveName');
+  const leaderboardBox = document.getElementById('leaderboard');
 
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
   function getPlayerName(){ const n = localStorage.getItem('arena_player_name') || ''; return n.trim().slice(0,24); }
@@ -188,42 +164,47 @@
     if (error) console.error("submitScore error:", error.message);
   }
 
-  // Name UI
-  playerNameInput.value = getPlayerName();
-  saveNameBtn.onclick = ()=>{ setPlayerName(playerNameInput.value); playerNameInput.value = getPlayerName(); saveNameBtn.textContent = 'Saved ✓'; setTimeout(()=> saveNameBtn.textContent = 'Save name', 900); };
+  // ---------- responsive canvas (mobile inset) ----------
+  const state = {
+    center:{x:0,y:0},
+    arenaR:0,
+    balls:[],
+    spokes:[],
+    running:false,
+    winnerColor:null,
+    bank:100,
+    startingColors:[],
+    pick:null,
+    payoutMult:0,
+    lastBet:0,
+    lastPayout:0
+  };
 
-  // Collapsible leaderboard on phones
-  if (window.matchMedia('(max-width: 640px)').matches) {
-    leaderboardCard.classList.add('collapsed');
-    leaderboardCard.addEventListener('click', () => {
-      leaderboardCard.classList.toggle('collapsed');
-    });
-  }
+  function getTopInset(){ return window.matchMedia('(max-width: 640px)').matches ? TOP_INSET_MOBILE : 0; }
 
-  // ---- layout helpers ----
   function fitCanvas(){
+    const topInset = getTopInset();
     const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const vh = window.innerHeight - topInset;
     const size = Math.min(vw, vh);
     const dpr  = window.devicePixelRatio || 1;
+
+    canvas.style.marginTop = topInset + 'px';
     canvas.style.width  = size + 'px';
     canvas.style.height = size + 'px';
     canvas.width  = Math.floor(size * dpr);
     canvas.height = Math.floor(size * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
-  }
-  function refreshArenaGeometry(){
-    state.center = { x: canvas.clientWidth/2, y: canvas.clientHeight/2 };
-    state.arenaR  = Math.min(canvas.clientWidth, canvas.clientHeight) * 0.45;
-  }
-  fitCanvas(); window.addEventListener('resize', fitCanvas);
 
-  const rand=(a,b)=>a+Math.random()*(b-a);
-  let nextId=1;
+    state.center = { x: size/2, y: size/2 };
+    state.arenaR = size * 0.45;
+  }
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
 
-  // ---- colors ----
-  const pool=[];                
-  const colorNames = new Map(); 
+  // ---------- color pool ----------
+  const pool=[];                // {hex, used:false, name}
+  const colorNames = new Map(); // hex -> name
   function hslToHex(h,s,l){
     const a=s*Math.min(l,1-l);
     const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1)));return Math.round(255*c).toString(16).padStart(2,'0');};
@@ -256,44 +237,20 @@
     shuffle(block);
     for(const p of block){ pool.push(p); colorNames.set(p.hex,p.name); }
   }
-  ensurePool(60);
-
-  // no-op now that the top bar is gone
-  function updateInPlayBar(){}
+  ensurePool(INITIAL_POOL_SIZE);
 
   function pickUnusedColor(){
     for(const p of pool){
-      if(!p.used){ p.used=true; updateInPlayBar(); return p.hex; }
+      if(!p.used){ p.used=true; return p.hex; }
     }
     ensurePool(pool.length+10);
     return pickUnusedColor();
   }
-  function releaseColor(hex){
-    const p=pool.find(p=>p.hex===hex);
-    if(p && p.used){ p.used=false; updateInPlayBar(); }
-  }
 
-  // ---- state ----
-  const state={
-    center:{x:canvas.clientWidth/2,y:canvas.clientHeight/2},
-    arenaR:Math.min(canvas.clientWidth,canvas.clientHeight)*0.45,
-    balls:[],
-    spokes:[],
-    running:false,
-    winnerColor:null,
-    bank:Number(localStorage.getItem('arena_bank')||'200'),
-    startingColors:[],
-    pick:null,
-    payoutMult:0,
-    lastBet:0,
-    lastPayout:0
-  };
+  // ---------- round control ----------
+  const rand=(a,b)=>a+Math.random()*(b-a);
+  let nextId=1;
 
-  function saveBank(){ localStorage.setItem('arena_bank', String(state.bank)); }
-  function updateBankUI(){ bankEl.textContent = `$${state.bank}`; }
-  function setBankTo100(){ state.bank=100; localStorage.setItem('arena_bank','100'); updateBankUI(); }
-
-  // ---- round control ----
   function addInitialBall(){
     const id=nextId++, ang=rand(0,Math.PI*2), speed=rand(130,200), r=rand(10,16);
     const rr=rand(0,state.arenaR-60), th=rand(0,Math.PI*2);
@@ -303,6 +260,10 @@
     state.balls.push({id,x,y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,r,color,spawned:false});
   }
 
+  function updateBankUI(){ bankEl.textContent = `$${state.bank}`; }
+  function setBankTo100(){ state.bank = 100; localStorage.setItem('arena_bank','100'); updateBankUI(); }
+
+  // betting guard: cap to bank, hint at $0
   function enforceBetAndFunds(){
     let b = Math.max(1, Math.floor(Number(betInput.value) || 1));
     if (b > state.bank) b = state.bank;
@@ -312,11 +273,9 @@
     const noFunds = state.bank <= 0;
     startBtn.disabled = noFunds || !state.pick;
 
-    if (noFunds) {
-      oddsEl.textContent = 'You’re out of funds. Hit “Reset $100” to keep playing.';
-    } else {
-      oddsEl.textContent = `(Winner pays ×${state.payoutMult}). Good luck!`;
-    }
+    oddsEl.textContent = noFunds
+      ? 'You’re out of funds. Hit “Reset $100” to keep playing.'
+      : `(Winner pays ×${state.payoutMult}). Good luck!`;
   }
 
   function renderGuessChoices(){
@@ -342,7 +301,6 @@
   function hideWinner(){ winnerEl.style.display = 'none'; }
 
   function reset(){
-    for(const b of state.balls) releaseColor(b.color);
     state.balls=[]; state.spokes=[]; state.winnerColor=null; hideWinner();
     state.running=false;
 
@@ -357,7 +315,7 @@
     btnPause.textContent='▶️ Play (Space)';
   }
 
-  // ---- physics helpers ----
+  // ---------- physics helpers ----------
   function reflect(vx,vy,nx,ny){ const dot=vx*nx+vy*ny; return {vx:vx-2*dot*nx, vy:vy-2*dot*ny}; }
   function rayCircleT(Px,Py,ux,uy,Cx,Cy,R){
     const dx=Px-Cx, dy=Py-Cy, b=dx*ux+dy*uy, c=dx*dx+dy*dy-R*R, disc=b*b-c;
@@ -373,7 +331,7 @@
   function ownedSpokeCount(ballId){ let n=0; for(const s of state.spokes) if(s.ownerId===ballId) n++; return n; }
   function clampSpeed(b){ const s=Math.hypot(b.vx,b.vy); if(s>MAX_SPEED){ const k=MAX_SPEED/s; b.vx*=k; b.vy*=k; } }
 
-  // ---- simulation ----
+  // ---------- simulation ----------
   function addSpoke(owner,angle){
     angle=(angle%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
     state.spokes.push({ownerId:owner.id, angle});
@@ -425,7 +383,7 @@
       }
     }
 
-    // ball vs spokes
+    // ball vs spokes (owner cannot cut its own)
     for(let i=state.balls.length-1;i>=0;i--){
       const b=state.balls[i];
       for(let j=state.spokes.length-1;j>=0;j--){
@@ -445,21 +403,19 @@
     for(let i=state.balls.length-1;i>=0;i--){
       const b=state.balls[i];
       if(b.spawned && ownedSpokeCount(b.id)===0){
-        releaseColor(b.color);
         state.balls.splice(i,1);
       }
     }
 
-    // winner & bet settlement
+    // winner & bet settlement + leaderboard submit
     if(state.balls.length===1 && !state.winnerColor){
       state.winnerColor = state.balls[0].color;
 
       let youWon=false; state.lastBet=0; state.lastPayout=0;
       if(state.pick){
         let bet = Math.max(1, Math.floor(Number(betInput.value)||DEFAULT_BET));
-        bet = Math.min(bet, state.bank);
+        bet = Math.min(bet, state.bank); // cap to bank
         state.lastBet = bet;
-
         if(state.pick === state.winnerColor){
           const payout = bet * Math.max(1, state.startingColors.length - 1);
           state.lastPayout = payout;
@@ -467,7 +423,8 @@
         } else {
           state.bank -= bet;
         }
-        saveBank(); updateBankUI(); enforceBetAndFunds();
+        localStorage.setItem('arena_bank', String(state.bank));
+        updateBankUI(); enforceBetAndFunds();
       }
       showWinner(state.winnerColor, youWon);
 
@@ -483,10 +440,12 @@
     const {center:c, arenaR:R}=state;
     ctx.fillStyle='#0e0e11'; ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
 
+    // arena border
     ctx.save(); ctx.translate(c.x,c.y);
     ctx.beginPath(); ctx.arc(0,0,R,0,Math.PI*2);
     ctx.strokeStyle='#bfbfc4'; ctx.lineWidth=2; ctx.stroke();
 
+    // spokes
     ctx.lineWidth=3; ctx.lineCap='round'; ctx.strokeStyle='#3f4148';
     for(const s of state.spokes){
       const owner=state.balls.find(b=>b.id===s.ownerId); if(!owner) continue;
@@ -498,6 +457,7 @@
       ctx.stroke();
     }
 
+    // balls
     for(const b of state.balls){
       ctx.beginPath(); ctx.arc(b.x-c.x,b.y-c.y,b.r,0,Math.PI*2);
       ctx.fillStyle=b.color; ctx.fill();
@@ -507,10 +467,9 @@
     statsEl.textContent=`Balls: ${state.balls.length} • Spokes: ${state.spokes.length}`;
   }
 
-  // ---- loop & UI ----
+  // ---------- loop & UI ----------
   let last=performance.now();
   function loop(now){
-    refreshArenaGeometry();
     const dt=Math.min(0.033,(now-last)/1000);
     if(state.running){ update(dt); draw(); } else { draw(); }
     last=now; requestAnimationFrame(loop);
@@ -537,12 +496,12 @@
     if(e.key.toLowerCase()==='r'){ btnReset.click(); }
   });
 
-  // ---- Boot ----
+  // ---------- Boot ----------
   (function init(){
-    setBankTo100();
-    fetchTop10();
+    setBankTo100();          // always start $100 on fresh load
+    fetchTop10();            // leaderboard
     playerNameInput.value = getPlayerName();
-    reset();
+    reset();                 // first round
     requestAnimationFrame(loop);
   })();
 })();

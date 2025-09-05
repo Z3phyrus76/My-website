@@ -50,6 +50,7 @@
       font-size:18px;
       font-weight:700;
       margin-top:6px;
+      margin-bottom:40px; /* lifts text up by spacing below */
     }
 
     /* ===== POPUPS ===== */
@@ -61,7 +62,7 @@
       box-shadow:0 6px 18px rgba(0,0,0,.25);
     }
 
-    /* --- Side giraffes (slide in) --- */
+    /* --- Side giraffes --- */
     .side{
       top:55%;
       transform:translateY(-50%);
@@ -126,8 +127,8 @@
         max-height:22vh;
       }
 
-      /* move the left/right side giraffes down to cover empty space */
-      .side{ top:70%; }  /* <-- key change */
+      /* Move side giraffes down */
+      .side{ top:70%; }
 
       :root{
         --popup-x-left: 24%;
@@ -138,7 +139,10 @@
 
       .container{ padding-bottom: calc(250px + env(safe-area-inset-bottom)); }
 
-      .text{ font-size:16px; }
+      .text{ 
+        font-size:16px; 
+        margin-bottom:60px; /* more lift on small screens */
+      }
     }
   </style>
 </head>

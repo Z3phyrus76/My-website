@@ -54,6 +54,29 @@
   #leaderboardCard button{
     padding:6px 8px; border-radius:8px; border:1px solid #2a2a30; background:#2a2a30; color:#fff; cursor:pointer;
   }
+
+  /* --- Mobile & small screens --- */
+  @media (max-width: 640px) {
+    #wrap{ place-items:start center; }                   /* keep room above canvas */
+    #guessPanel{ bottom:12px; left:8px; right:8px; padding:10px; }
+    .stats{ top:8px; left:8px; font-size:12px; padding:4px 8px; }
+    #inPlayBar{ top:6px; gap:6px; }
+
+    /* Collapsible leaderboard on phones */
+    #leaderboardCard{
+      width:86vw; right:7vw; left:auto; cursor:pointer;
+      transition: transform .18s ease, opacity .18s ease, max-height .18s ease;
+    }
+    #leaderboardCard.collapsed{
+      max-height:40px; overflow:hidden; opacity:.92;
+    }
+    #leaderboardCard .header::after{
+      content:" (tap to expand)"; opacity:.7; font-weight:600;
+    }
+
+    .btn{ padding:7px 10px; }
+    .bank input{ width:80px; }
+  }
 </style>
 
 <!-- Supabase client -->
@@ -133,15 +156,16 @@
   const winnerText = document.getElementById('winnerText');
   const resultMsg = document.getElementById('resultMsg');
 
-  // ---- Supabase wiring (PUT YOUR VALUES) ----
-  const SUPABASE_URL = "https://exbemqrtqmldgsrnczmf.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YmVtcXJ0cW1sZGdzcm5jem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjExMDAsImV4cCI6MjA3MjU5NzEwMH0.TpMDHcMQ5g8xyHgJpi_z7V7HN0I3J6SkNTuqz9ORsCo";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
   // Leaderboard elements
   const playerNameInput = document.getElementById('playerName');
   const saveNameBtn = document.getElementById('saveName');
   const leaderboardBox = document.getElementById('leaderboard');
+  const leaderboardCard = document.getElementById('leaderboardCard');
+
+  // ---- Supabase wiring (YOUR VALUES) ----
+  const SUPABASE_URL = "https://exbemqrtqmldgsrnczmf.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YmVtcXJ0cW1sZGdzcm5jem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjExMDAsImV4cCI6MjA3MjU5NzEwMH0.TpMDHcMQ5g8xyHgJpi_z7V7HN0I3J6SkNTuqz9ORsCo";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
   function getPlayerName(){ const n = localStorage.getItem('arena_player_name') || ''; return n.trim().slice(0,24); }
@@ -173,13 +197,29 @@
   playerNameInput.value = getPlayerName();
   saveNameBtn.onclick = ()=>{ setPlayerName(playerNameInput.value); playerNameInput.value = getPlayerName(); saveNameBtn.textContent = 'Saved ✓'; setTimeout(()=> saveNameBtn.textContent = 'Save name', 900); };
 
+  // Collapsible leaderboard on phones
+  if (window.matchMedia('(max-width: 640px)').matches) {
+    leaderboardCard.classList.add('collapsed');
+    leaderboardCard.addEventListener('click', () => {
+      leaderboardCard.classList.toggle('collapsed');
+    });
+  }
+
   // ---- utils ----
   function fitCanvas(){
-    const size=Math.min(window.innerWidth,window.innerHeight);
-    const dpr=window.devicePixelRatio||1;
-    canvas.style.width=size+'px'; canvas.style.height=size+'px';
-    canvas.width=Math.floor(size*dpr); canvas.height=Math.floor(size*dpr);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const size = Math.min(vw, vh);                 // square canvas that fits
+    const dpr  = window.devicePixelRatio || 1;
+    canvas.style.width  = size + 'px';
+    canvas.style.height = size + 'px';
+    canvas.width  = Math.floor(size * dpr);
+    canvas.height = Math.floor(size * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function refreshArenaGeometry(){
+    state.center = { x: canvas.clientWidth/2, y: canvas.clientHeight/2 };
+    state.arenaR  = Math.min(canvas.clientWidth, canvas.clientHeight) * 0.45;
   }
   fitCanvas(); window.addEventListener('resize', fitCanvas);
 
@@ -253,12 +293,7 @@
 
   function saveBank(){ localStorage.setItem('arena_bank', String(state.bank)); }
   function updateBankUI(){ bankEl.textContent = `$${state.bank}`; }
-
-  function setBankTo100(){
-    state.bank = 100;
-    localStorage.setItem('arena_bank','100');
-    updateBankUI();
-  }
+  function setBankTo100(){ state.bank=100; localStorage.setItem('arena_bank','100'); updateBankUI(); }
 
   // ---- top bar: only live colors ----
   function updateInPlayBar(){
@@ -288,7 +323,7 @@
   // ---- betting guard: cap to bank, hint at $0 ----
   function enforceBetAndFunds(){
     let b = Math.max(1, Math.floor(Number(betInput.value) || 1));
-    if (b > state.bank) b = state.bank;          // cap bet to current bank
+    if (b > state.bank) b = state.bank;
     betInput.max = Math.max(1, state.bank);
     betInput.value = b;
 
@@ -442,7 +477,7 @@
       let youWon=false; state.lastBet=0; state.lastPayout=0;
       if(state.pick){
         let bet = Math.max(1, Math.floor(Number(betInput.value)||DEFAULT_BET));
-        bet = Math.min(bet, state.bank);                        // cap bet to bank
+        bet = Math.min(bet, state.bank);
         state.lastBet = bet;
 
         if(state.pick === state.winnerColor){
@@ -456,7 +491,7 @@
       }
       showWinner(state.winnerColor, youWon);
 
-      // ⬇️ Post score to Supabase and refresh Top 10
+      // Post score + refresh Top 10
       const nameForScore = getPlayerName() || randomGuestName();
       submitScore({ name: nameForScore, score: state.bank })
         .then(()=> fetchTop10())
@@ -496,6 +531,7 @@
   // ---- loop & UI ----
   let last=performance.now();
   function loop(now){
+    refreshArenaGeometry();                               // keep geometry synced
     const dt=Math.min(0.033,(now-last)/1000);
     if(state.running){ update(dt); draw(); } else { draw(); }
     last=now; requestAnimationFrame(loop);
@@ -515,7 +551,6 @@
 
   btnReset.onclick=reset;
   btnResetBank.onclick=()=>{ setBankTo100(); reset(); };
-
   betInput.addEventListener('input', enforceBetAndFunds);
 
   window.addEventListener('keydown',e=>{
@@ -525,15 +560,10 @@
 
   // ---- Boot ----
   (function init(){
-    // Always start with $100 on each visit (fresh page load)
-    setBankTo100();
-
-    // Load leaderboard and name UI
-    fetchTop10();
+    setBankTo100();                // always start with $100 on a fresh visit
+    fetchTop10();                  // load leaderboard
     playerNameInput.value = getPlayerName();
-
-    // Start a new round and loop
-    reset();
+    reset();                       // start a round
     requestAnimationFrame(loop);
   })();
 })();

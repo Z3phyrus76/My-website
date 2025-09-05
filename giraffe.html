@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Do you wanna go out with me?</title>
+
+  <style>
+    /* I set up these main colors so if I ever wanna change the vibe, 
+       I only need to swap them here instead of hunting everywhere */
+    :root{
+      --bg:#ffd6e8;          /* background (pink) */
+      --ink:#fff;            /* text (white) */
+      --panel:#ffb6d5;       /* the cards + bubble bg */
+      --accent:#ffffff;      /* button bg (white) */
+      --accentText:#d6336c;  /* button text (pink) */
+    }
+
+    /* Just some base setup stuff */
+    *{ box-sizing:border-box; }
+    html,body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    /* This centers everything on the page */
+    .container{
+      min-height:100%;
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+      place-items:center;
+      gap:18px;
+      padding:24px;
+    }
+
+    /* The little “text bubble” at the top */
+    .dialogue{
+      max-width: 600px;
+      background: var(--panel);
+      border: 1px solid #fff;
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-size: 16px;
+      line-height: 1.55;
+      box-shadow: 0 6px 18px rgba(0,0,0,.15);
+      position: relative;
+    }
+    /* This is the little triangle tail on the bubble */
+    .dialogue::after{
+      content:"";
+      position:absolute;
+      bottom:-14px; left:40px; /* I can slide this left/right to move the tail */
+      border-width:14px 14px 0;
+      border-style:solid;
+      border-color: var(--panel) transparent transparent transparent;
+    }
+
+    /* This wraps the gif + the buttons */
+    .card{
+      background:var(--panel);
+      border:1px solid #fff;
+      border-radius:16px;
+      padding:18px;
+      box-shadow:0 10px 28px rgba(0,0,0,.15);
+      display:grid;
+      place-items:center;
+      gap:12px;
+    }
+
+    /* The gif is responsive, looks nice on any screen size */
+    .gif_container img{
+      width:min(420px, 86vw);
+      height:auto;
+      display:block;
+      border-radius:12px;
+    }
+
+    /* This is the “arena” where the No button moves around */
+    .buttons{
+      position:relative;
+      width:min(420px, 86vw);
+      height:120px; /* if I want more room for chaos, I make this taller */
+      display:flex; align-items:center; justify-content:center;
+      gap:12px; margin-top:6px;
+    }
+
+    /* Buttons in general */
+    .btn{
+      position:relative;
+      appearance:none;
+      border:2px solid #fff;
+      border-radius:999px;
+      padding:12px 22px;
+      font-weight:800;
+      font-size:16px;
+      cursor:pointer;
+      transition:transform .12s ease, box-shadow .12s ease, background .2s ease;
+      box-shadow:0 6px 18px rgba(0,0,0,.15);
+      background:var(--accent);
+      color:var(--accentText);
+    }
+    .btn:hover{ transform:translateY(-2px) scale(1.05); }
+
+    /* No button gets its own purple color for fun */
+    #noButton{ color:#6a0dad; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- My little playful opener -->
+    <div class="dialogue" aria-label="Playful message">
+      <strong>
+        Not sure if I over-explained or if you’re just not big on texting 😂<br>
+        but lmk if we’re still good for the zoo!
+      </strong>
+      <br><br>
+      <strong>
+        This is me if you say no 🦒😢 (maybe overboard, but I had to lol)
+      </strong>
+    </div>
+
+    <div class="card">
+      <!-- The gif (can swap out if I want to change the animal later) -->
+      <div class="gif_container">
+        <img
+          src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3p6ejkyODlnMHRyb3JhejB0anNjdnh5ZWwxZTlhaTFyd2tyMzZpcyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/5LnSpBMBfE5nuXs17a/giphy.gif"
+          alt="Cute giraffe"
+        />
+      </div>
+
+      <!-- Yes = go to the fun page; No = plays hard to get -->
+      <div class="buttons" id="playground">
+        <button class="btn" id="yesButton" type="button" onclick="nextPage()" aria-label="Say yes">Yes</button>
+        <button class="btn" id="noButton" type="button" aria-label="Try to click no">No</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // If they click Yes, it takes them to my “success” page
+    function nextPage(){
+      window.location.href = "yes.giraffe.html";
+    }
+
+    // This makes the No button run away
+    const noBtn = document.getElementById('noButton');
+    const area  = document.getElementById('playground');
+
+    // I set its position to absolute so it can move around inside
+    noBtn.style.position = 'absolute';
+
+    function moveButton(){
+      // Size of the playground
+      const rect = area.getBoundingClientRect();
+
+      // Button size
+      const bw = noBtn.offsetWidth;
+      const bh = noBtn.offsetHeight;
+
+      // Small padding so it never goes off the edge
+      const pad = 6;
+
+      // Max spots it can go
+      const maxX = rect.width  - bw - pad;
+      const maxY = rect.height - bh - pad;
+
+      // Pick a random new spot
+      const x = pad + Math.random() * Math.max(1, maxX);
+      const y = pad + Math.random() * Math.max(1, maxY);
+
+      noBtn.style.left = x + 'px';
+      noBtn.style.top  = y + 'px';
+    }
+
+    // Runs away on hover (desktop)
+    noBtn.addEventListener('mouseenter', moveButton);
+    // Runs away if someone tabs onto it (keyboard)
+    noBtn.addEventListener('focus', moveButton);
+    // Runs away on touch (mobile)
+    noBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      moveButton();
+    }, { passive:false });
+  </script>
+</body>
+</html>

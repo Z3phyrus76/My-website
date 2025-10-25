@@ -7,14 +7,18 @@
 
 <style>
   :root{
+    /* assets */
     --luffy-image: url("japan-2025-photos/luffy-birthday.png");
+
+    /* animated red theme */
     --bg1:#7a0000; --bg2:#b30000; --bg3:#e10600; --bg4:#ff4040;
     --ink:#2b2b2b; --bubble-bg:#fff; --bubble-border:#2b2b2b;
 
+    /* layout */
     --gap:24px;
     --img-min:260px;
     --img-max:480px;
-    --img-aspect:340/637;
+    --img-aspect:340/637; /* your photo ratio */
   }
 
   html,body{height:100%}
@@ -23,42 +27,49 @@
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial,sans-serif;
     display:grid; place-items:center; padding:24px; box-sizing:border-box;
 
+    /* animated red background */
     background:linear-gradient(-45deg,var(--bg1),var(--bg2),var(--bg3),var(--bg4));
     background-size:400% 400%;
     animation:bgShift 14s ease-in-out infinite;
   }
+  /* add extra bottom room only AFTER Enter for small screens */
+  body.mini-pad{ padding-bottom: 96px; }
+
   @keyframes bgShift{
     0%{background-position:0% 50%}
     50%{background-position:100% 50%}
     100%{background-position:0% 50%}
   }
 
-  /* ---------- PERSISTENT SPOTIFY PLAYER ---------- */
+  /* ---------- PERSISTENT SPOTIFY PLAYER (floats) ---------- */
   #spotifyPlayer{ position:fixed; z-index:10000; transition:all .5s ease; }
-  /* splash state (centered, large, at bottom) */
+
+  /* Large, centered during loader */
   #spotifyPlayer.player--splash{
     width:min(560px,94vw);
     left:50%; transform:translateX(-50%);
-    bottom:4vh; /* a little higher so it’s not too close to edge */
+    bottom:4vh;
     filter:drop-shadow(0 10px 24px rgba(0,0,0,.35));
   }
   #spotifyPlayer.player--splash iframe{
     width:100%; height:152px; border-radius:12px; border:0;
   }
-  /* mini state after Enter */
+
+  /* Smaller mini-player after Enter */
   #spotifyPlayer.player--mini{
-    width:min(320px,92vw);
+    width:min(300px,88vw);             /* smaller than before */
     right:12px; bottom:12px; left:auto; transform:none;
     filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));
   }
   #spotifyPlayer.player--mini iframe{
-    width:100%; height:80px; border-radius:12px; border:0;
+    width:100%; height:80px; border-radius:12px; border:0; /* Spotify compact */
   }
 
   /* ---------- LOADER OVERLAY ---------- */
   .splash{
-    position:fixed; inset:0; z-index:9999; /* below the player; player remains clickable */
-    display:flex; align-items:center; justify-content:center; text-align:center; color:#fff; padding:20px;
+    position:fixed; inset:0; z-index:9999; /* below player; player stays clickable */
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; color:#fff; padding:20px;
     background:
       radial-gradient(circle at 50% 35%, rgba(255,255,255,.12), transparent 55%),
       linear-gradient(-45deg,var(--bg1),var(--bg2),var(--bg3),var(--bg4));
@@ -67,17 +78,19 @@
   .splash-inner{
     display:flex; flex-direction:column; align-items:center; gap:10px;
     width:min(560px,94vw);
-    /* reserve space so the player never overlaps content */
+    /* reserve space so the player never overlaps content on the splash */
     padding-bottom:190px;  /* ~152px player + breathing room */
   }
   .splash-gif{
     width:min(48vmin,360px); height:auto; border-radius:14px;
-    box-shadow:0 18px 48px rgba(0,0,0,.45); transition:opacity .25s ease;
+    box-shadow:0 18px 48px rgba(0,0,0,.45);
+    transition:opacity .25s ease;
   }
   .hide{ opacity:0 }
 
   .splash-caption{
-    font-weight:800; letter-spacing:.4px; text-shadow:0 2px 6px rgba(0,0,0,.35);
+    font-weight:800; letter-spacing:.4px;
+    text-shadow:0 2px 6px rgba(0,0,0,.35);
   }
   .splash-instruction{
     margin-top:6px; font-weight:700; opacity:.9;
@@ -108,7 +121,7 @@
     aspect-ratio:var(--img-aspect);
     background-image:var(--luffy-image);
     background-size:cover;
-    background-position:center top;
+    background-position:center top; /* keep the hat visible */
     border-radius:14px;
     box-shadow:0 16px 40px rgba(0,0,0,.35);
     transform:translateY(24px);
@@ -135,25 +148,42 @@
   @keyframes slideUp{to{transform:translateY(0);opacity:1}}
   @keyframes popIn{to{transform:translateY(0) scale(1);opacity:1}}
 
-  /* iPhone tweaks */
+  /* iPhone / small screens */
   @media (max-width:620px){
     .card{flex-direction:column; align-items:center}
     .bubble{text-align:center}
     .bubble::after{
       left:50%; top:-20px; transform:translateX(-50%);
-      border-top:0; border-bottom:20px solid var(--bubble-bg);
-      border-right:14px solid transparent; border-left:14px solid transparent;
+      border-top:0;
+      border-bottom:20px solid var(--bubble-bg);
+      border-right:14px solid transparent;
+      border-left:14px solid transparent;
       filter:drop-shadow(0 -2px 0 var(--bubble-border));
     }
-    /* slightly smaller player + more reserved space on small screens */
-    #spotifyPlayer.player--splash iframe{ height:120px }
-    .splash-inner{ padding-bottom:150px }
+    #spotifyPlayer.player--splash iframe{ height:120px } /* smaller during splash */
+    .splash-inner{ padding-bottom:150px }               /* reserved space for splash */
+    body.mini-pad{ padding-bottom:120px; }              /* more space under card */
+  }
+
+  /* phones <=480px: shrink mini-player more */
+  @media (max-width:480px){
+    #spotifyPlayer.player--mini{
+      width:min(240px,86vw);
+      right:max(8px, env(safe-area-inset-right));
+      bottom:max(8px, env(safe-area-inset-bottom));
+    }
+  }
+
+  /* extra-small phones */
+  @media (max-width:360px){
+    #spotifyPlayer.player--mini{ width:min(220px,84vw); }
+    body.mini-pad{ padding-bottom:130px; }
   }
 </style>
 </head>
 <body>
 
-  <!-- SPOTIFY (tap Play on loader; keeps playing after Enter) -->
+  <!-- SPOTIFY: tap Play on loader; keeps playing after Enter -->
   <div id="spotifyPlayer" class="player--splash" aria-label="Spotify player">
     <iframe
       src="https://open.spotify.com/embed/track/2hXPmiqKdXcbV0L1VKnTDN?utm_source=generator"
@@ -162,7 +192,7 @@
     </iframe>
   </div>
 
-  <!-- LOADER with looping 3-GIF sequence -->
+  <!-- LOADER with looping 3-GIF sequence + captions -->
   <div id="splash" class="splash" aria-label="Loading birthday surprise">
     <div class="splash-inner">
       <img id="splashImg" class="splash-gif" src="" alt="Nika / Gear 5 sequence">
@@ -188,15 +218,16 @@
 <script>
   /* ---------- CONFIG ---------- */
   const BASE = "japan-2025-photos/";
-  const EXT  = ".gif"; // change if your loaders are .webp
+  const EXT  = ".gif"; // change if your loader files are .webp
 
+  // Loop these in order (captions stay separate from the instruction)
   const FRAMES = [
     { file: "nika-sungod",        caption: "Me running away from my problems", ms: 1400 },
     { file: "nika-sungod-gear5",  caption: "Me everytime I see a mirror",      ms: 1400 },
     { file: "nika-sungod-laugh",  caption: "Me laughing at my own jokes",      ms: 1400 },
   ];
 
-  // Preload assets
+  // Preload
   const preloadCard = new Image(); preloadCard.src = BASE + "luffy-birthday.png";
   FRAMES.forEach(f => { const i = new Image(); i.src = BASE + f.file + EXT; });
 
@@ -224,13 +255,14 @@
   }
   window.addEventListener("load", () => loopFrames(0));
 
-  // Enter → stop loop, fade out splash, show app, shrink player (keeps playing)
+  // Enter → stop loop, fade splash, show app, shrink player, add bottom padding
   enterBtn.addEventListener("click", () => {
     running = false;
     splash.classList.add("fade-out");
     app.classList.add("show");
     playerBox.classList.remove("player--splash");
     playerBox.classList.add("player--mini");
+    document.body.classList.add("mini-pad"); // ensure texts aren’t covered on phones
     setTimeout(() => splash.remove(), 650);
   });
 </script>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>I love you – Heart Wheel</title>
+
+<style>
+  :root{
+    --bg:#000;
+    --dur:10000ms;               /* how long one full left↔right sweep takes */
+  }
+
+  html,body{
+    margin:0;
+    height:100%;
+  }
+  body{
+    background:var(--bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    font-family:system-ui,Roboto,Arial,sans-serif;
+  }
+
+  /* full-screen container like in the video */
+  #ui{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* wrapper around all strips
+     NOTE: no rotation here – just push heart up a bit */
+  .heart{
+    position:relative;
+    width:50vmin;
+    height:50vmin;
+    transform: translateY(-5vh);   /* slight nudge up */
+    transform-origin:center;
+  }
+
+  /* each strip is positioned on the heart via CSS vars --x / --y */
+  .love_strip{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:
+      translate(-50%, -50%)
+      translate(var(--x), var(--y));
+  }
+
+  /* EXACTLY the CSS shown under the Instagram reel */
+  #ui .love_word{
+    color:#ea80b0;
+    font-size:1.4rem;
+    transform: translateY(-100%) rotateZ(-30deg);
+    text-shadow:0 0 10px #fff;
+    letter-spacing:2px;
+    white-space:nowrap;
+  }
+
+  #ui .love_horizontal{
+    animation: horizontal var(--dur) infinite alternate ease-in-out;
+    animation-delay: calc(var(--i) * -300ms);
+  }
+
+  /* only the words move; heart container itself doesn't rotate */
+  @keyframes horizontal{
+    from{
+      transform: translateY(-100%) translateX(-80px) rotateZ(-30deg);
+    }
+    to{
+      transform: translateY(-100%) translateX(80px) rotateZ(-30deg);
+    }
+  }
+
+  @media (max-width:600px){
+    .heart{ width:70vmin; height:70vmin; }
+    #ui .love_word{ font-size:1.1rem; letter-spacing:1.5px; }
+  }
+</style>
+</head>
+<body>
+  <div id="ui">
+    <div class="heart" id="heart"></div>
+  </div>
+
+<script>
+const heart = document.getElementById('heart');
+
+/* tweak these three to taste */
+const STRIPS = 60;                        // how many "ribs" form the band
+const SCALE  = 12;                        // overall heart size
+const TEXT   = "I love you ".repeat(3);   // text along each rib
+
+/*
+  For each strip:
+    - pick angle t around the heart
+    - compute (x, y) on a parametric heart
+    - place one "I love you..." strip at that position
+    - the CSS animation slides the words left↔right
+*/
+
+for (let i = 0; i < STRIPS; i++) {
+  const t = (i / STRIPS) * Math.PI * 2;   // angle 0..2π
+
+  // classic parametric heart curve
+  let x = 16 * Math.pow(Math.sin(t), 3);
+  let y = 13 * Math.cos(t)
+        - 5 * Math.cos(2 * t)
+        - 2 * Math.cos(3 * t)
+        -     Math.cos(4 * t);
+
+  // vertical squash so the heart looks a bit wider, like in the reel
+  y *= 0.7;
+
+  const strip = document.createElement('div');
+  strip.className = 'love_strip';
+
+  // position this strip on the heart
+  strip.style.setProperty('--x', `${x * SCALE}px`);
+  strip.style.setProperty('--y', `${-y * SCALE}px`); // minus because CSS y goes downward
+
+  const moving = document.createElement('div');
+  moving.className = 'love_horizontal';
+  moving.style.setProperty('--i', i); // used in animation-delay for staggering
+
+  const text = document.createElement('div');
+  text.className = 'love_word';
+  text.textContent = TEXT;
+
+  moving.appendChild(text);
+  strip.appendChild(moving);
+  heart.appendChild(strip);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D CSS Christmas Tree</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #02060c;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .scene {
+      perspective: 800px;
+    }
+
+    .tree {
+      position: relative;
+      height: 50vmin;
+      width: 25vmin;
+      transform-style: preserve-3d;
+    }
+
+    /* ⭐ Star – nudged left so it's above the spiral */
+    .star {
+      position: absolute;
+      top: -4vmin;
+      left: 0%;                  /* <-- main change */
+      transform: translateX(-50%);
+      width: 4vmin;
+      height: 4vmin;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 0 10px #ffd54f) drop-shadow(0 0 20px #ffd54f);
+      opacity: 0;
+      animation: starOn 0.8s ease-out forwards;
+      animation-delay: 3s;
+    }
+
+    .star::before {
+      content: "★";
+      font-size: 3.2vmin;
+      color: #fff9c4;
+      text-shadow:
+        0 0 6px #ffd54f,
+        0 0 12px #ffd54f,
+        0 0 18px #ffb300;
+    }
+
+    .tree__light {
+      transform-style: preserve-3d;
+      position: absolute;
+      height: 1vmin;
+      width: 1vmin;
+      border-radius: 50%;
+      bottom: calc(var(--y, 0) * 1%);
+      background: #ff375f;
+      box-shadow: 0 0 10px 3px rgba(255, 55, 95, 0.9);
+      opacity: 0;
+      animation:
+        lightUp 3s ease-out forwards,
+        orbit 6s linear infinite;
+      animation-delay:
+        calc((3s / var(--total)) * var(--i)), 0s;
+    }
+
+    .tree__light:nth-child(odd) {
+      background: #ffffff;
+      box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.9);
+    }
+
+    .tree__light:nth-child(even) {
+      background: #ff375f;
+      box-shadow: 0 0 10px 3px rgba(255, 55, 95, 0.9);
+    }
+
+    @keyframes lightUp {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes orbit {
+      from {
+        transform:
+          translate(-50%, 50%)
+          rotateY(calc(var(--rotate, 0) * 1deg))
+          translateZ(var(--radius, 12vmin));
+      }
+      to {
+        transform:
+          translate(-50%, 50%)
+          rotateY(calc(var(--rotate, 0) * 1deg + 360deg))
+          translateZ(var(--radius, 12vmin));
+      }
+    }
+
+    @keyframes starOn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="tree" id="tree">
+      <div class="star"></div>
+    </div>
+  </div>
+
+  <script>
+    const TOTAL = 80;
+    const TURNS = 5;
+    const MAX_R = 12;
+    const MIN_R = 2;
+
+    const tree = document.getElementById('tree');
+
+    for (let i = 0; i < TOTAL; i++) {
+      const light = document.createElement('div');
+      light.className = 'tree__light';
+
+      const t = i / (TOTAL - 1);
+      const y = t * 100;
+      const rotate = 360 * TURNS * t;
+      const radius = MAX_R - (MAX_R - MIN_R) * t;
+
+      light.style.setProperty('--i', i);
+      light.style.setProperty('--total', TOTAL);
+      light.style.setProperty('--y', y);
+      light.style.setProperty('--rotate', rotate);
+      light.style.setProperty('--radius', radius + 'vmin');
+
+      tree.appendChild(light);
+    }
+  </script>
+</body>
+</html>

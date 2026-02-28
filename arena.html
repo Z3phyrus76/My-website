@@ -76,6 +76,29 @@
   <canvas id="game" width="900" height="900" aria-label="Arena"></canvas>
   <div class="stats" id="stats">Balls: 0 • Spokes: 0</div>
 
+  <div id="yourPick" style="
+  position:absolute;
+  top:52px;
+  left:12px;
+  right:auto;
+  background:#1b1b20;
+  border:1px solid #2a2a30;
+  padding:6px 10px;
+  border-radius:10px;
+  font-size:13px;
+  display:none;
+  align-items:center;
+  gap:8px;
+  align-items:center;">
+  <span>Your pick:</span>
+  <div id="yourPickSwatch" style="
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    border:2px solid #0009;"></div>
+</div>
+  
+  
   <!-- Guessing panel -->
   <div id="guessPanel">
     <div class="bank">
@@ -340,6 +363,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function reset(){
     state.balls=[]; state.spokes=[]; state.winnerColor=null; hideWinner();
+    document.getElementById('yourPick').style.display = 'none';
     state.running=false;
 
     for(let i=0;i<START_BALLS;i++) addInitialBall();
@@ -517,12 +541,20 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   playerNameInput.value = getPlayerName();
   saveNameBtn.onclick = ()=>{ setPlayerName(playerNameInput.value); playerNameInput.value = getPlayerName(); saveNameBtn.textContent = 'Saved ✓'; setTimeout(()=> saveNameBtn.textContent = 'Save name', 900); };
 
-  startBtn.onclick=()=>{
-    if(!state.pick) return;
-    guessPanel.style.display='none';
-    state.running = true;
-    btnPause.textContent = '⏸️ Pause (Space)';
-  };
+startBtn.onclick=()=>{
+  if(!state.pick) return;
+
+  guessPanel.style.display='none';
+  state.running = true;
+  btnPause.textContent = '⏸️ Pause (Space)';
+
+  const pickBadge = document.getElementById('yourPick');
+  const pickSwatch = document.getElementById('yourPickSwatch');
+  pickSwatch.style.background = state.pick;
+  const pickName = colorNames.get(state.pick) || state.pick;
+  pickBadge.querySelector('span').textContent = `Your pick: ${pickName}`;
+  pickBadge.style.display = 'flex';
+};
   btnPause.onclick=()=>{
     state.running=!state.running;
     btnPause.textContent = state.running ? '⏸️ Pause (Space)' : '▶️ Play (Space)';

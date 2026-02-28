@@ -157,9 +157,9 @@
   const leaderboardBox = document.getElementById('leaderboard');
 
   // ---------- Supabase ----------
-  const SUPABASE_URL = "https://exbemqrtqmldgsrnczmf.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4YmVtcXJ0cW1sZGdzcm5jem1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjExMDAsImV4cCI6MjA3MjU5NzEwMH0.TpMDHcMQ5g8xyHgJpi_z7V7HN0I3J6SkNTuqz9ORsCo";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = "https://mwccxjfaxdbfpxldjoln.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Hhc-zELHIgztENuJl37P3w_5GtAef9k";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
   function getPlayerName(){ const n = localStorage.getItem('arena_player_name') || ''; return n.trim().slice(0,24); }

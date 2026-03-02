@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Arena — Guess the Winner + Leaderboard</title>
+
 <style>
   :root { --bg:#0e0e11; --panel:#1b1b20; --panel2:#2a2a30; --ink:#fff; }
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Roboto,Arial}
@@ -70,45 +71,46 @@
 <!-- Supabase client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
 <div id="wrap">
   <!-- Arena canvas -->
   <canvas id="game" width="900" height="900" aria-label="Arena"></canvas>
   <div class="stats" id="stats">Balls: 0 • Spokes: 0</div>
 
+  <!-- small badge that shows what you picked once the round starts -->
   <div id="yourPick" style="
-  position:absolute;
-  top:52px;
-  left:12px;
-  right:auto;
-  background:#1b1b20;
-  border:1px solid #2a2a30;
-  padding:6px 10px;
-  border-radius:10px;
-  font-size:13px;
-  display:none;
-  align-items:center;
-  gap:8px;
-  align-items:center;">
-  <span>Your pick:</span>
-  <div id="yourPickSwatch" style="
-    width:16px;
-    height:16px;
-    border-radius:50%;
-    border:2px solid #0009;"></div>
-</div>
-  
-  
+    position:absolute;
+    top:52px;
+    left:12px;
+    right:auto;
+    background:#1b1b20;
+    border:1px solid #2a2a30;
+    padding:6px 10px;
+    border-radius:10px;
+    font-size:13px;
+    display:none;
+    gap:8px;
+    align-items:center;">
+    <span>Your pick:</span>
+    <div id="yourPickSwatch" style="
+      width:16px;height:16px;border-radius:50%;border:2px solid #0009;"></div>
+  </div>
+
   <!-- Guessing panel -->
   <div id="guessPanel">
     <div class="bank">
       <div><strong>Bank:</strong> <span id="bank">$0</span></div>
       <div>Bet: <input id="bet" type="number" min="1" step="1" value="10" aria-label="Bet amount"></div>
       <small id="odds"></small>
-      <small style="opacity:.75">Tip: pick a color, place your bet, then start the round. Set a name (top-right) to appear on the leaderboard.</small>
+      <small style="opacity:.75">
+        Tip: pick a color, place your bet, then start the round. Set a name (top-right) to appear on the leaderboard.
+      </small>
     </div>
+
     <div><strong>Who do you think wins?</strong></div>
     <div id="guessColors"></div>
+
     <div style="display:flex; gap:8px;">
       <button class="btn" id="startBtn" disabled>Start round</button>
     </div>
@@ -135,65 +137,109 @@
     <button id="resetBank" class="btn">💵 Reset $100</button>
   </div>
 
+  <!-- Winner / result overlay -->
   <div class="winner" id="winner" style="display:none;">
     <div class="winnerInner">
       <div class="winnerSwatch" id="winnerSwatch"></div>
       <div id="winnerText">Winner: …</div>
       <div class="resultMsg" id="resultMsg"></div>
+
+      <!-- NEW: show this only when you lose early -->
+      <button class="btn" id="nextRoundBtn" style="pointer-events:auto; margin-left:8px; display:none;">
+        Start new round
+      </button>
     </div>
   </div>
 </div>
 
 <script>
 (() => {
-  // ---------- knobs ----------
+  // -----------------------------
+  // Settings (aka the knobs)
+  // -----------------------------
+  // I kept these at the top so it's easy to change the feel of the game.
   const START_BALLS = 10;
   const DEFAULT_BET = 10;
   const INITIAL_POOL_SIZE = 60;
   const COLLISION_SPEED_MULT = 1.5;
   const MAX_SPEED = 520;
-  const TOP_INSET_MOBILE = 120; // px: pushes arena down on small screens
+  const TOP_INSET_MOBILE = 120; // pushes arena down on small screens
 
-  // ---------- DOM ----------
+  // If a ball somehow still has 0 spokes after this long, delete it.
+  // This helps prevent "immortal" balls that never created spokes.
+  const NO_SPOKE_GRACE_SECONDS = 2.0;
+
+  // -----------------------------
+  // DOM
+  // -----------------------------
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d', { alpha:false });
+
   const statsEl = document.getElementById('stats');
+
   const guessPanel = document.getElementById('guessPanel');
   const guessColors = document.getElementById('guessColors');
   const startBtn = document.getElementById('startBtn');
+
   const bankEl = document.getElementById('bank');
   const betInput = document.getElementById('bet');
   const oddsEl = document.getElementById('odds');
+
   const btnPause = document.getElementById('pause');
   const btnReset = document.getElementById('reset');
   const btnResetBank = document.getElementById('resetBank');
+
   const winnerEl = document.getElementById('winner');
   const winnerSwatch = document.getElementById('winnerSwatch');
   const winnerText = document.getElementById('winnerText');
   const resultMsg = document.getElementById('resultMsg');
+  const nextRoundBtn = document.getElementById('nextRoundBtn'); // NEW
 
-  // Leaderboard DOM (for toggle)
+  // Leaderboard DOM
   const lbCard   = document.getElementById('leaderboardCard');
   const lbHeader = document.getElementById('leaderboardHeader');
   const playerNameInput = document.getElementById('playerName');
   const saveNameBtn = document.getElementById('saveName');
   const leaderboardBox = document.getElementById('leaderboard');
 
-  // ---------- Supabase ----------
-const SUPABASE_URL = "https://mwccxjfaxdbfpxldjoln.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Hhc-zELHIgztENuJl37P3w_5GtAef9k";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // -----------------------------
+  // Supabase
+  // -----------------------------
+  const SUPABASE_URL = "https://mwccxjfaxdbfpxldjoln.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_Hhc-zELHIgztENuJl37P3w_5GtAef9k";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  function escapeHTML(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;' }[m])); }
-  function getPlayerName(){ const n = localStorage.getItem('arena_player_name') || ''; return n.trim().slice(0,24); }
-  function setPlayerName(n){ const v = (n||'').trim().slice(0,24); localStorage.setItem('arena_player_name', v || randomGuestName()); }
-  function randomGuestName(){ return "Guest#" + Math.floor(1000 + Math.random()*9000); }
+  function escapeHTML(s){
+    return String(s).replace(/[&<>"']/g, m => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'
+    }[m]));
+  }
+
+  // Name logic:
+  // - If they save a name, use it.
+  // - If they don't, generate User####.
+  function randomGuestName(){ return "User" + Math.floor(1000 + Math.random()*9000); }
+  function getPlayerName(){
+    const n = localStorage.getItem('arena_player_name') || '';
+    return n.trim().slice(0,24);
+  }
+  function setPlayerName(n){
+    const v = (n||'').trim().slice(0,24);
+    // if they typed nothing, we still store a user#### so the leaderboard isn't blank
+    localStorage.setItem('arena_player_name', v || randomGuestName());
+  }
 
   async function fetchTop10(){
     leaderboardBox.innerHTML = `<div style="opacity:.8;">Loading top scores…</div>`;
     const { data, error } = await sb.from('leaderboard_top10').select('*');
-    if (error) { leaderboardBox.innerHTML = `<div style="color:#f66">Couldn't load the leaderboard. Please try again.</div>`; return; }
-    if (!data?.length){ leaderboardBox.innerHTML = `<div style="opacity:.8;">No scores yet. Be the first!</div>`; return; }
+    if (error) {
+      leaderboardBox.innerHTML = `<div style="color:#f66">Couldn't load the leaderboard. Please try again.</div>`;
+      return;
+    }
+    if (!data?.length){
+      leaderboardBox.innerHTML = `<div style="opacity:.8;">No scores yet. Be the first!</div>`;
+      return;
+    }
     leaderboardBox.innerHTML = data.map((r,i)=>`
       <div class="row" style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed #2a2a30;">
         <div style="opacity:.85;">${i+1}. ${escapeHTML(r.name)}</div>
@@ -210,7 +256,9 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     if (error) console.error("submitScore error:", error.message);
   }
 
-  // ---------- responsive canvas (mobile inset) ----------
+  // -----------------------------
+  // Game state
+  // -----------------------------
   const state = {
     center:{x:0,y:0},
     arenaR:0,
@@ -226,7 +274,15 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     lastPayout:0
   };
 
-  function getTopInset(){ return window.matchMedia('(max-width: 640px)').matches ? TOP_INSET_MOBILE : 0; }
+  // NEW: if your picked ball dies mid-round, we instantly show "You lost"
+  let pickedColorEliminated = false;
+
+  // -----------------------------
+  // Responsive canvas (mobile inset)
+  // -----------------------------
+  function getTopInset(){
+    return window.matchMedia('(max-width: 640px)').matches ? TOP_INSET_MOBILE : 0;
+  }
 
   function fitCanvas(){
     const topInset = getTopInset();
@@ -238,6 +294,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     canvas.style.marginTop = topInset + 'px';
     canvas.style.width  = size + 'px';
     canvas.style.height = size + 'px';
+
     canvas.width  = Math.floor(size * dpr);
     canvas.height = Math.floor(size * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -248,27 +305,34 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
 
-  // ---------- leaderboard collapse toggle ----------
+  // -----------------------------
+  // Leaderboard collapse toggle
+  // -----------------------------
   function applyLbCollapsed(fromStorage=false){
     const collapsed = localStorage.getItem('lb_collapsed') === '1';
     if (collapsed) lbCard.classList.add('collapsed');
     else lbCard.classList.remove('collapsed');
     if (!fromStorage) localStorage.setItem('lb_collapsed', collapsed ? '1' : '0');
   }
-  // initialize from storage
   applyLbCollapsed(true);
-  // toggle on tap
   lbHeader.addEventListener('click', ()=>{
     lbCard.classList.toggle('collapsed');
     localStorage.setItem('lb_collapsed', lbCard.classList.contains('collapsed') ? '1' : '0');
   });
 
-  // ---------- color pool ----------
+  // -----------------------------
+  // Color pool (so every ball has a different color)
+  // -----------------------------
   const pool=[];                // {hex, used:false, name}
-  const colorNames = new Map(); // hex -> name
+  const colorNames = new Map(); // hex -> simple name
+
   function hslToHex(h,s,l){
     const a=s*Math.min(l,1-l);
-    const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1)));return Math.round(255*c).toString(16).padStart(2,'0');};
+    const f=n=>{
+      const k=(n+h/30)%12;
+      const c=l-a*Math.max(-1,Math.min(k-3,Math.min(9-k,1)));
+      return Math.round(255*c).toString(16).padStart(2,'0');
+    };
     return `#${f(0)}${f(8)}${f(4)}`;
   }
   function hueToName(h){
@@ -287,7 +351,13 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     if (h<315) return 'Magenta';
     return 'Pink';
   }
-  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j=(Math.random()*(i+1))|0;
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
   function ensurePool(n){
     const start=pool.length, block=[];
     for(let i=start;i<n;i++){
@@ -308,23 +378,38 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     return pickUnusedColor();
   }
 
-  // ---------- round control ----------
+  // -----------------------------
+  // Round control
+  // -----------------------------
   const rand=(a,b)=>a+Math.random()*(b-a);
   let nextId=1;
 
   function addInitialBall(){
-    const id=nextId++, ang=rand(0,Math.PI*2), speed=rand(130,200), r=rand(10,16);
-    const rr=rand(0,state.arenaR-60), th=rand(0,Math.PI*2);
+    const id=nextId++;
+    const ang=rand(0,Math.PI*2);
+    const speed=rand(130,200);
+    const r=rand(10,16);
+
+    const rr=rand(0,state.arenaR-60);
+    const th=rand(0,Math.PI*2);
     const x=state.center.x + rr*Math.cos(th);
     const y=state.center.y + rr*Math.sin(th);
     const color=pickUnusedColor();
-    state.balls.push({id,x,y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,r,color,spawned:false});
+
+    // life = how long it's existed (helps kill 0-spoke balls after a grace period)
+    state.balls.push({
+      id,x,y,
+      vx:Math.cos(ang)*speed,
+      vy:Math.sin(ang)*speed,
+      r,color,
+      spawned:false,
+      life:0
+    });
   }
 
   function updateBankUI(){ bankEl.textContent = `$${state.bank}`; }
   function setBankTo100(){ state.bank = 100; localStorage.setItem('arena_bank','100'); updateBankUI(); }
 
-  // betting guard: cap to bank, hint at $0
   function enforceBetAndFunds(){
     let b = Math.max(1, Math.floor(Number(betInput.value) || 1));
     if (b > state.bank) b = state.bank;
@@ -340,13 +425,26 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
   function renderGuessChoices(){
-    guessColors.innerHTML=''; state.pick=null; startBtn.disabled=true;
+    guessColors.innerHTML='';
+    state.pick=null;
+    startBtn.disabled=true;
+
     for(const hex of state.startingColors){
       const el=document.createElement('div');
-      el.className='pick'; el.style.background=hex; el.title=colorNames.get(hex)||hex;
-      el.onclick=()=>{ state.pick=hex; guessColors.querySelectorAll('.pick').forEach(p=>p.classList.remove('selected')); el.classList.add('selected'); enforceBetAndFunds(); };
+      el.className='pick';
+      el.style.background=hex;
+      el.title=colorNames.get(hex)||hex;
+
+      el.onclick=()=>{
+        state.pick=hex;
+        guessColors.querySelectorAll('.pick').forEach(p=>p.classList.remove('selected'));
+        el.classList.add('selected');
+        enforceBetAndFunds();
+      };
+
       guessColors.appendChild(el);
     }
+
     betInput.value = DEFAULT_BET;
     enforceBetAndFunds();
     updateBankUI();
@@ -358,11 +456,36 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     winnerText.textContent = `Winner: ${name}`;
     resultMsg.textContent = youWon ? `You won $${state.lastPayout}!` : `You lost $${state.lastBet}.`;
     winnerEl.style.display = 'flex';
+
+    // normal win/lose at the end does NOT show the "start new round" button
+    nextRoundBtn.style.display = 'none';
   }
-  function hideWinner(){ winnerEl.style.display = 'none'; }
+  function hideWinner(){
+    winnerEl.style.display = 'none';
+    nextRoundBtn.style.display = 'none';
+  }
+
+  // NEW: instant lose if your chosen color dies early
+  function endRoundEarlyLoss(){
+    state.running = false;
+    btnPause.textContent = '▶️ Play (Space)';
+
+    winnerSwatch.style.background = state.pick || '#000';
+    winnerText.textContent = 'You lost!';
+    resultMsg.textContent = `Your color got eliminated.`;
+    winnerEl.style.display = 'flex';
+
+    nextRoundBtn.style.display = 'inline-block';
+  }
 
   function reset(){
-    state.balls=[]; state.spokes=[]; state.winnerColor=null; hideWinner();
+    state.balls=[];
+    state.spokes=[];
+    state.winnerColor=null;
+    hideWinner();
+
+    pickedColorEliminated = false;
+
     document.getElementById('yourPick').style.display = 'none';
     state.running=false;
 
@@ -377,44 +500,83 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     btnPause.textContent='▶️ Play (Space)';
   }
 
-  // ---------- physics helpers ----------
-  function reflect(vx,vy,nx,ny){ const dot=vx*nx+vy*ny; return {vx:vx-2*dot*nx, vy:vy-2*dot*ny}; }
+  // -----------------------------
+  // Physics helpers
+  // -----------------------------
+  function reflect(vx,vy,nx,ny){
+    const dot=vx*nx+vy*ny;
+    return {vx:vx-2*dot*nx, vy:vy-2*dot*ny};
+  }
   function rayCircleT(Px,Py,ux,uy,Cx,Cy,R){
-    const dx=Px-Cx, dy=Py-Cy, b=dx*ux+dy*uy, c=dx*dx+dy*dy-R*R, disc=b*b-c;
-    if(disc<0) return null; const t1=-b-Math.sqrt(disc), t2=-b+Math.sqrt(disc);
-    const t=Math.min(t1>0?t1:Infinity, t2>0?t2:Infinity); return isFinite(t)?t:null;
+    const dx=Px-Cx, dy=Py-Cy;
+    const b=dx*ux+dy*uy;
+    const c=dx*dx+dy*dy-R*R;
+    const disc=b*b-c;
+    if(disc<0) return null;
+    const t1=-b-Math.sqrt(disc), t2=-b+Math.sqrt(disc);
+    const t=Math.min(t1>0?t1:Infinity, t2>0?t2:Infinity);
+    return isFinite(t)?t:null;
   }
   function pointSegDist(Ax,Ay,Bx,By,Qx,Qy){
-    const ABx=Bx-Ax,ABy=By-Ay, len2=ABx*ABx+ABy*ABy;
+    const ABx=Bx-Ax, ABy=By-Ay;
+    const len2=ABx*ABx+ABy*ABy;
     if(len2===0) return Math.hypot(Qx-Ax,Qy-Ay);
-    let t=((Qx-Ax)*ABx+(Qy-Ay)*ABy)/len2; t=Math.max(0,Math.min(1,t));
-    const Px=Ax+t*ABx, Py=Ay+t*ABy; return Math.hypot(Qx-Px,Qy-Py);
+    let t=((Qx-Ax)*ABx+(Qy-Ay)*ABy)/len2;
+    t=Math.max(0,Math.min(1,t));
+    const Px=Ax+t*ABx, Py=Ay+t*ABy;
+    return Math.hypot(Qx-Px,Qy-Py);
   }
-  function ownedSpokeCount(ballId){ let n=0; for(const s of state.spokes) if(s.ownerId===ballId) n++; return n; }
-  function clampSpeed(b){ const s=Math.hypot(b.vx,b.vy); if(s>MAX_SPEED){ const k=MAX_SPEED/s; b.vx*=k; b.vy*=k; } }
+  function ownedSpokeCount(ballId){
+    let n=0;
+    for(const s of state.spokes) if(s.ownerId===ballId) n++;
+    return n;
+  }
+  function clampSpeed(b){
+    const s=Math.hypot(b.vx,b.vy);
+    if(s>MAX_SPEED){
+      const k=MAX_SPEED/s;
+      b.vx*=k; b.vy*=k;
+    }
+  }
 
-  // ---------- simulation ----------
+  // -----------------------------
+  // Simulation
+  // -----------------------------
   function addSpoke(owner,angle){
     angle=(angle%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
     state.spokes.push({ownerId:owner.id, angle});
     owner.spawned=true;
   }
   function addThreeSpokesOnHit(owner,baseAngle){
-    const spread=0.5, offs=[-spread/2,0,spread/2];
+    const spread=0.5;
+    const offs=[-spread/2,0,spread/2];
     for(const off of offs) addSpoke(owner, baseAngle+off);
   }
 
   function update(dt){
     const c=state.center, R=state.arenaR;
 
+    // track ball lifetime (used to kill 0-spoke balls after grace period)
+    for(const b of state.balls) b.life += dt;
+
     // move + wall bounce
     for(const b of state.balls){
       b.x+=b.vx*dt; b.y+=b.vy*dt;
-      const dx=b.x-c.x, dy=b.y-c.y, dist=Math.hypot(dx,dy);
+      const dx=b.x-c.x, dy=b.y-c.y;
+      const dist=Math.hypot(dx,dy);
+
       if(dist+b.r>=R){
-        const nx=dx/dist, ny=dy/dist, hitAngle=Math.atan2(ny,nx);
-        const v=reflect(b.vx,b.vy,nx,ny); b.vx=v.vx; b.vy=v.vy;
-        const overlap=(dist+b.r)-R; b.x-=nx*(overlap+0.5); b.y-=ny*(overlap+0.5);
+        const nx=dx/dist, ny=dy/dist;
+        const hitAngle=Math.atan2(ny,nx);
+
+        const v=reflect(b.vx,b.vy,nx,ny);
+        b.vx=v.vx; b.vy=v.vy;
+
+        const overlap=(dist+b.r)-R;
+        b.x-=nx*(overlap+0.5);
+        b.y-=ny*(overlap+0.5);
+
+        // when you hit the wall: spawn 3 spokes
         addThreeSpokesOnHit(b, hitAngle);
       }
     }
@@ -424,95 +586,171 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       for(let j=i+1;j<state.balls.length;j++){
         const a=state.balls[i], b=state.balls[j];
         const dx=b.x-a.x, dy=b.y-a.y;
-        const dist=Math.hypot(dx,dy), minDist=a.r+b.r;
+        const dist=Math.hypot(dx,dy);
+        const minDist=a.r+b.r;
+
         if(dist>0 && dist<minDist){
           const nx=dx/dist, ny=dy/dist;
-          const overlap=minDist-dist, push=overlap/2+0.5;
-          a.x-=nx*push; a.y-=ny*push; b.x+=nx*push; b.y+=ny*push;
+          const overlap=minDist-dist;
+          const push=overlap/2+0.5;
 
+          a.x-=nx*push; a.y-=ny*push;
+          b.x+=nx*push; b.y+=ny*push;
+
+          // simple elastic swap along normal
           const va = a.vx*nx + a.vy*ny;
           const vb = b.vx*nx + b.vy*ny;
           const vaAfter = vb, vbAfter = va;
+
           const tax = a.vx - va*nx, tay = a.vy - va*ny;
           const tbx = b.vx - vb*nx, tby = b.vy - vb*ny;
+
           a.vx = tax + vaAfter*nx; a.vy = tay + vaAfter*ny;
           b.vx = tbx + vbAfter*nx; b.vy = tby + vbAfter*ny;
 
           a.vx *= COLLISION_SPEED_MULT; a.vy *= COLLISION_SPEED_MULT;
           b.vx *= COLLISION_SPEED_MULT; b.vy *= COLLISION_SPEED_MULT;
+
           clampSpeed(a); clampSpeed(b);
         }
       }
     }
 
-    // ball vs spokes (owner cannot cut its own)
+    // ball vs spokes (a ball cannot cut its own spokes)
     for(let i=state.balls.length-1;i>=0;i--){
       const b=state.balls[i];
+
       for(let j=state.spokes.length-1;j>=0;j--){
         const s=state.spokes[j];
         if(s.ownerId===b.id) continue;
+
         const owner=state.balls.find(bb=>bb.id===s.ownerId);
         if(!owner){ state.spokes.splice(j,1); continue; }
+
         const ux=Math.cos(s.angle), uy=Math.sin(s.angle);
-        const t=rayCircleT(owner.x,owner.y,ux,uy,c.x,c.y,R); if(t==null) continue;
+        const t=rayCircleT(owner.x,owner.y,ux,uy,c.x,c.y,R);
+        if(t==null) continue;
+
         const ex=owner.x+ux*t, ey=owner.y+uy*t;
         const d=pointSegDist(owner.x,owner.y,ex,ey,b.x,b.y);
-        if(d<=b.r){ state.spokes.splice(j,1); }
+
+        if(d<=b.r){
+          state.spokes.splice(j,1);
+        }
       }
     }
 
-    // eliminate balls with no spokes
+    // eliminate balls with 0 spokes
+    // - if it already spawned spokes before: instant death when it has 0
+    // - if it never spawned: give it a little grace so the start isn't chaos
     for(let i=state.balls.length-1;i>=0;i--){
       const b=state.balls[i];
-      if(b.spawned && ownedSpokeCount(b.id)===0){
+      const spokeCount = ownedSpokeCount(b.id);
+
+      const shouldDie =
+        spokeCount === 0 &&
+        (b.spawned || b.life >= NO_SPOKE_GRACE_SECONDS);
+
+      if(shouldDie){
+        state.spokes = state.spokes.filter(s => s.ownerId !== b.id);
         state.balls.splice(i,1);
       }
     }
 
-    // winner & bet settlement + leaderboard submit
+    // NEW: instant lose the moment your picked color disappears
+    if (!pickedColorEliminated && state.pick) {
+      const pickStillAlive = state.balls.some(b => b.color === state.pick);
+
+      if (!pickStillAlive) {
+        pickedColorEliminated = true;
+
+        // take the bet immediately (so you don't lose later too)
+        let bet = Math.max(1, Math.floor(Number(betInput.value) || DEFAULT_BET));
+        bet = Math.min(bet, state.bank);
+        state.lastBet = bet;
+        state.lastPayout = 0;
+
+        state.bank -= bet;
+        localStorage.setItem('arena_bank', String(state.bank));
+        updateBankUI();
+        enforceBetAndFunds();
+
+        endRoundEarlyLoss();
+        return; // stop here so it doesn't also trigger the "final winner" logic
+      }
+    }
+
+    // winner & bet settlement + leaderboard submit (only happens if round finishes normally)
     if(state.balls.length===1 && !state.winnerColor){
       state.winnerColor = state.balls[0].color;
 
-      let youWon=false; state.lastBet=0; state.lastPayout=0;
+      let youWon=false;
+      state.lastBet=0;
+      state.lastPayout=0;
+
       if(state.pick){
         let bet = Math.max(1, Math.floor(Number(betInput.value)||DEFAULT_BET));
-        bet = Math.min(bet, state.bank); // cap to bank
+        bet = Math.min(bet, state.bank);
         state.lastBet = bet;
+
         if(state.pick === state.winnerColor){
           const payout = bet * Math.max(1, state.startingColors.length - 1);
           state.lastPayout = payout;
-          state.bank += payout; youWon = true;
+          state.bank += payout;
+          youWon = true;
         } else {
           state.bank -= bet;
         }
+
         localStorage.setItem('arena_bank', String(state.bank));
-        updateBankUI(); enforceBetAndFunds();
+        updateBankUI();
+        enforceBetAndFunds();
       }
+
       showWinner(state.winnerColor, youWon);
 
+      // always submit with a name (User#### if empty)
       const nameForScore = getPlayerName() || randomGuestName();
       submitScore({ name: nameForScore, score: state.bank })
         .then(()=> fetchTop10())
         .catch(()=>{});
     }
-    if(state.balls.length!==1 && state.winnerColor){ state.winnerColor=null; hideWinner(); }
+
+    if(state.balls.length!==1 && state.winnerColor){
+      state.winnerColor=null;
+      hideWinner();
+    }
   }
 
   function draw(){
     const {center:c, arenaR:R}=state;
-    ctx.fillStyle='#0e0e11'; ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+
+    // background
+    ctx.fillStyle='#0e0e11';
+    ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
 
     // arena border
-    ctx.save(); ctx.translate(c.x,c.y);
-    ctx.beginPath(); ctx.arc(0,0,R,0,Math.PI*2);
-    ctx.strokeStyle='#bfbfc4'; ctx.lineWidth=2; ctx.stroke();
+    ctx.save();
+    ctx.translate(c.x,c.y);
+    ctx.beginPath();
+    ctx.arc(0,0,R,0,Math.PI*2);
+    ctx.strokeStyle='#bfbfc4';
+    ctx.lineWidth=2;
+    ctx.stroke();
 
     // spokes
-    ctx.lineWidth=3; ctx.lineCap='round'; ctx.strokeStyle='#3f4148';
+    ctx.lineWidth=3;
+    ctx.lineCap='round';
+    ctx.strokeStyle='#3f4148';
+
     for(const s of state.spokes){
-      const owner=state.balls.find(b=>b.id===s.ownerId); if(!owner) continue;
+      const owner=state.balls.find(b=>b.id===s.ownerId);
+      if(!owner) continue;
+
       const ux=Math.cos(s.angle), uy=Math.sin(s.angle);
-      const t=rayCircleT(owner.x,owner.y,ux,uy,c.x,c.y,R); if(t==null) continue;
+      const t=rayCircleT(owner.x,owner.y,ux,uy,c.x,c.y,R);
+      if(t==null) continue;
+
       ctx.beginPath();
       ctx.moveTo(owner.x-c.x, owner.y-c.y);
       ctx.lineTo(owner.x-c.x+ux*t, owner.y-c.y+uy*t);
@@ -521,57 +759,97 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // balls
     for(const b of state.balls){
-      ctx.beginPath(); ctx.arc(b.x-c.x,b.y-c.y,b.r,0,Math.PI*2);
-      ctx.fillStyle=b.color; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(b.x-c.x,b.y-c.y,b.r,0,Math.PI*2);
+      ctx.fillStyle=b.color;
+      ctx.fill();
     }
-    ctx.restore();
 
+    ctx.restore();
     statsEl.textContent=`Balls: ${state.balls.length} • Spokes: ${state.spokes.length}`;
   }
 
-  // ---------- loop & UI ----------
+  // -----------------------------
+  // Loop & UI
+  // -----------------------------
   let last=performance.now();
   function loop(now){
     const dt=Math.min(0.033,(now-last)/1000);
-    if(state.running){ update(dt); draw(); } else { draw(); }
-    last=now; requestAnimationFrame(loop);
+    if(state.running){ update(dt); draw(); }
+    else { draw(); }
+    last=now;
+    requestAnimationFrame(loop);
   }
 
-  // Name box + save
+  // Name box
   playerNameInput.value = getPlayerName();
-  saveNameBtn.onclick = ()=>{ setPlayerName(playerNameInput.value); playerNameInput.value = getPlayerName(); saveNameBtn.textContent = 'Saved ✓'; setTimeout(()=> saveNameBtn.textContent = 'Save name', 900); };
+  saveNameBtn.onclick = ()=>{
+    setPlayerName(playerNameInput.value);
+    playerNameInput.value = getPlayerName();
+    saveNameBtn.textContent = 'Saved ✓';
+    setTimeout(()=> saveNameBtn.textContent = 'Save name', 900);
+  };
 
-startBtn.onclick=()=>{
-  if(!state.pick) return;
+  // Start round
+  startBtn.onclick=()=>{
+    if(!state.pick) return;
 
-  guessPanel.style.display='none';
-  state.running = true;
-  btnPause.textContent = '⏸️ Pause (Space)';
+    guessPanel.style.display='none';
+    state.running = true;
+    btnPause.textContent = '⏸️ Pause (Space)';
 
-  const pickBadge = document.getElementById('yourPick');
-  const pickSwatch = document.getElementById('yourPickSwatch');
-  pickSwatch.style.background = state.pick;
-  const pickName = colorNames.get(state.pick) || state.pick;
-  pickBadge.querySelector('span').textContent = `Your pick: ${pickName}`;
-  pickBadge.style.display = 'flex';
-};
+    const pickBadge = document.getElementById('yourPick');
+    const pickSwatch = document.getElementById('yourPickSwatch');
+    pickSwatch.style.background = state.pick;
+    const pickName = colorNames.get(state.pick) || state.pick;
+    pickBadge.querySelector('span').textContent = `Your pick: ${pickName}`;
+    pickBadge.style.display = 'flex';
+  };
+
+  // Pause toggle
   btnPause.onclick=()=>{
     state.running=!state.running;
     btnPause.textContent = state.running ? '⏸️ Pause (Space)' : '▶️ Play (Space)';
   };
+
+  // Reset round
   btnReset.onclick=reset;
-  btnResetBank.onclick=()=>{ setBankTo100(); reset(); };
+
+  // Reset bank
+  btnResetBank.onclick=()=>{
+    setBankTo100();
+    reset();
+  };
+
+  // Bet typing
   betInput.addEventListener('input', enforceBetAndFunds);
-  window.addEventListener('keydown',e=>{
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', e=>{
     if(e.code==='Space'){ e.preventDefault(); btnPause.click(); }
     if(e.key.toLowerCase()==='r'){ btnReset.click(); }
   });
 
-  // ---------- Boot ----------
+  // NEW: button appears only on early-loss (picked color eliminated)
+  nextRoundBtn.onclick = () => {
+    nextRoundBtn.style.display = 'none';
+    winnerEl.style.display = 'none';
+    pickedColorEliminated = false;
+    reset();
+  };
+
+  // -----------------------------
+  // Boot
+  // -----------------------------
   (function init(){
-    setBankTo100();          // always start $100 on fresh load
-    fetchTop10();            // leaderboard
-    reset();                 // first round
+    // Always start with $100 on load
+    setBankTo100();
+
+    // Make sure they always have a stored name (User####) even if they never type one
+    if(!getPlayerName()) setPlayerName('');
+
+    fetchTop10();
+    reset();
     requestAnimationFrame(loop);
   })();
 })();

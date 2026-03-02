@@ -1,6 +1,6 @@
 # Edris Flores | Portfolio Website
 
-Welcome to my personal portfolio site — built from scratch using HTML, CSS, and JavaScript!
+Welcome to my personal portfolio site. Built from scratch using HTML, CSS, and JavaScript!
 
 ## Features
 - **Spin the Wheel** app with user-defined categories, dynamic colors, and confetti celebration

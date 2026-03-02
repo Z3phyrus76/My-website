@@ -17,7 +17,23 @@ body{
     linear-gradient(135deg, #7c3aed, #a855f7, #4c1d95);
 }
 
-/* top bubble (dog only, no text, not clickable) */
+/* ===== FULLSCREEN INTRO VIDEO OVERLAY ===== */
+#introVideoOverlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#introVideoOverlay video{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+/* top bubble */
 .hint{
   position:fixed;
   top:16px;
@@ -35,11 +51,9 @@ body{
   border-radius:999px;
   backdrop-filter: blur(10px);
 
-  /* no restart on click */
   cursor:default;
   user-select:none;
 
-  /* fade out when done */
   opacity:1;
   transition: opacity .35s ease, transform .35s ease;
 }
@@ -48,9 +62,8 @@ body{
   transform: translateX(-50%) translateY(-6px);
   pointer-events:none;
 }
-
 .hint img{
-  width:110px;          
+  width:110px;
   height:50px;
   border-radius:999px;
   object-fit:cover;
@@ -107,7 +120,14 @@ canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
 
 <body>
 
-<!-- dog only  -->
+<!-- Intro video overlay (plays first for 6 seconds, then reveals page) -->
+<div id="introVideoOverlay" aria-label="Intro video">
+  <video id="introVideo" autoplay muted playsinline preload="auto">
+    <source src="japan-2025-photos/Dachshund.mp4" type="video/mp4">
+  </video>
+</div>
+
+<!-- dog loader only -->
 <div class="hint" id="hint">
   <img src="japan-2025-photos/dachshund.gif" alt="">
 </div>
@@ -129,9 +149,42 @@ canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
 </div>
 
 <script>
+/* ===================== INTRO VIDEO: play ONLY 6 seconds, then start build ===================== */
+const introOverlay = document.getElementById("introVideoOverlay");
+const introVideo = document.getElementById("introVideo");
+
+const INTRO_PLAY_SECONDS = 6; // <-- change this to 5/7/etc if you want
+
+let introDone = false;
+let imgReady = false;
+
+function endIntro(){
+  if (introDone) return;
+  introDone = true;
+
+  try { introVideo.pause(); } catch(e){}
+  if (introOverlay) introOverlay.style.display = "none";
+
+  tryStartBuild();
+}
+
+function tryStartBuild(){
+  if (introDone && imgReady){
+    start();
+  }
+}
+
+// Force stop after 6 seconds no matter what the video does
+setTimeout(endIntro, INTRO_PLAY_SECONDS * 1000);
+
+// Fallbacks
+introVideo.addEventListener("error", endIntro);
+introVideo.play().catch(endIntro);
+
+/* ===================== MOSAIC BUILD ===================== */
 const IMAGE_SRC = "japan-2025-photos/jasmine.png";
 
-/* this is the build time (2-3 sec). change this number. */
+/* build time (2-3 sec). change this number. */
 const BUILD_MS = 2000;
 
 const CFG = {
@@ -287,6 +340,7 @@ function loop(now){
       doneAt=now;
 
       // hide loader bubble + show stickers
+      hint.classList.add("hide");
       overlayLayer.classList.add("show");
     }
     const t=Math.min(1,(now-doneAt)/CFG.finalFadeMs);
@@ -303,9 +357,15 @@ function start(){
 }
 
 /* no click-to-restart anymore */
-window.addEventListener("resize",()=>setTimeout(start,150));
+window.addEventListener("resize",()=>setTimeout(() => {
+  // only restart if intro already finished
+  if (introDone) start();
+}, 150));
 
-img.onload=start;
+img.onload = () => {
+  imgReady = true;
+  tryStartBuild();
+};
 img.onerror=()=>console.error("Couldn’t load:", IMAGE_SRC);
 </script>
 

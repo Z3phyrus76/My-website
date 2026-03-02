@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Happy Birthday Amy</title>
+
+<style>
+html, body { height:100%; margin:0; }
+
+body{
+  overflow:hidden;
+  font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  background:
+    radial-gradient(900px 650px at 25% 20%, rgba(255,255,255,.22), transparent 60%),
+    radial-gradient(900px 650px at 80% 65%, rgba(255,255,255,.14), transparent 60%),
+    linear-gradient(135deg, #7c3aed, #a855f7, #4c1d95);
+}
+
+/* top bubble (dog only, no text, not clickable) */
+.hint{
+  position:fixed;
+  top:16px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:30;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:10px 14px;
+  border:1px solid rgba(255,255,255,.22);
+  background:rgba(255,255,255,.10);
+  border-radius:999px;
+  backdrop-filter: blur(10px);
+
+  /* no restart on click */
+  cursor:default;
+  user-select:none;
+
+  /* fade out when done */
+  opacity:1;
+  transition: opacity .35s ease, transform .35s ease;
+}
+.hint.hide{
+  opacity:0;
+  transform: translateX(-50%) translateY(-6px);
+  pointer-events:none;
+}
+
+.hint img{
+  width:110px;          
+  height:50px;
+  border-radius:999px;
+  object-fit:cover;
+}
+
+/* canvas area */
+.stage{ position:relative; width:100%; height:100%; }
+.panel{ position:absolute; inset:0; background: rgba(255,255,255,.05); backdrop-filter: blur(8px); }
+.canvasWrap{ position:absolute; inset:0; overflow:hidden; }
+canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+/* overlay container */
+.overlayLayer{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:25;
+  opacity:0;
+  transition: opacity .3s ease;
+}
+.overlayLayer.show{ opacity:1; }
+
+/* top celebrate dogs */
+.topDog{
+  position:fixed;
+  top:4px;
+  width:200px;
+  max-width:20vw;
+  height:auto;
+  object-fit:contain;
+}
+.topDog.left{ left:-10px; }
+.topDog.right{ right:-10px; transform:scaleX(-1); }
+
+/* bottom big dogs */
+.cornerDog{
+  position:fixed;
+  bottom:18px;
+  width:720px;
+  max-width:36vw;
+  height:auto;
+  object-fit:contain;
+}
+.cornerDog.left{ left:12px; }
+.cornerDog.right{ right:12px; transform:scaleX(-1); }
+
+@media (max-width:700px){
+  .cornerDog{ max-width:42vw; bottom:10px; }
+  .topDog{ max-width:26vw; }
+  .hint img{ width:120px; height:62px; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- dog only  -->
+<div class="hint" id="hint">
+  <img src="japan-2025-photos/dachshund.gif" alt="">
+</div>
+
+<div class="stage">
+  <div class="panel"></div>
+  <div class="canvasWrap">
+    <canvas id="mosaic"></canvas>
+    <canvas id="front"></canvas>
+  </div>
+</div>
+
+<div class="overlayLayer" id="overlayLayer">
+  <img src="japan-2025-photos/celebratedog.gif" class="topDog left" alt="">
+  <img src="japan-2025-photos/celebratedog.gif" class="topDog right" alt="">
+
+  <img src="japan-2025-photos/dog.gif" class="cornerDog left" alt="">
+  <img src="japan-2025-photos/dog.gif" class="cornerDog right" alt="">
+</div>
+
+<script>
+const IMAGE_SRC = "japan-2025-photos/jasmine.png";
+
+/* this is the build time (2-3 sec). change this number. */
+const BUILD_MS = 2000;
+
+const CFG = {
+  tileSize: 24,
+  fallSpeed: 520,
+  fallJitter: 180,
+  finalFadeMs: 180
+};
+
+const hint = document.getElementById("hint");
+const overlayLayer = document.getElementById("overlayLayer");
+
+const mosaic = document.getElementById("mosaic");
+const front  = document.getElementById("front");
+const mctx = mosaic.getContext("2d");
+const fctx = front.getContext("2d");
+
+const off = document.createElement("canvas");
+const offCtx = off.getContext("2d");
+
+const img = new Image();
+img.src = IMAGE_SRC;
+
+let W=0, H=0, dpr=1;
+let tilesTotal=0;
+let queue=[], active=[];
+let startTime=0;
+let doneShown=false;
+let doneAt=0;
+
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+function resizeAll(){
+  W = window.innerWidth;
+  H = window.innerHeight;
+  dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  for (const c of [mosaic, front]){
+    c.width = W*dpr;
+    c.height = H*dpr;
+  }
+  mctx.setTransform(dpr,0,0,dpr,0,0);
+  fctx.setTransform(dpr,0,0,dpr,0,0);
+
+  off.width = W*dpr;
+  off.height = H*dpr;
+
+  drawImageCover();
+  buildQueue();
+
+  mctx.clearRect(0,0,W,H);
+  fctx.clearRect(0,0,W,H);
+
+  doneShown=false;
+  overlayLayer.classList.remove("show");
+  hint.classList.remove("hide");
+}
+
+function drawImageCover(){
+  const iw=img.naturalWidth, ih=img.naturalHeight;
+  const scale=Math.max(off.width/iw, off.height/ih);
+  const sw=iw*scale, sh=ih*scale;
+  const dx=(off.width-sw)/2, dy=(off.height-sh)/2;
+  offCtx.clearRect(0,0,off.width,off.height);
+  offCtx.drawImage(img,dx,dy,sw,sh);
+}
+
+function buildQueue(){
+  queue=[]; active=[];
+  const t=CFG.tileSize;
+
+  for(let y=0;y<H;y+=t){
+    for(let x=0;x<W;x+=t){
+      queue.push({
+        tx:x, ty:y, tw:t, th:t,
+        sx:x+(Math.random()-0.5)*t*2,
+        sy:-t-Math.random()*H*0.25,
+        born:0,
+        dur:CFG.fallSpeed+Math.random()*CFG.fallJitter
+      });
+    }
+  }
+
+  for(let i=queue.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [queue[i],queue[j]]=[queue[j],queue[i]];
+  }
+
+  tilesTotal=queue.length;
+}
+
+function drawTile(ctx,tile,dx,dy){
+  ctx.drawImage(
+    off,
+    tile.tx*dpr, tile.ty*dpr, tile.tw*dpr, tile.th*dpr,
+    dx, dy, tile.tw, tile.th
+  );
+}
+
+function spawn(now){
+  const elapsed=now-startTime;
+
+  // how many tiles should have started by now (based on BUILD_MS)
+  const shouldSpawn=Math.min(tilesTotal, Math.floor((elapsed/BUILD_MS)*tilesTotal));
+
+  // how many already started
+  const alreadySpawned=tilesTotal-queue.length;
+
+  let toSpawn=shouldSpawn-alreadySpawned;
+  if(toSpawn<=0) return;
+
+  // cap per frame so it doesn't freeze
+  toSpawn=Math.min(toSpawn, 2200);
+
+  for(let i=0;i<toSpawn && queue.length;i++){
+    const tile=queue.pop();
+    tile.born=now;
+    active.push(tile);
+  }
+}
+
+function drawFalling(tile,now){
+  const p=Math.min(1,(now-tile.born)/tile.dur);
+  const e=easeOutCubic(p);
+  const x=tile.sx+(tile.tx-tile.sx)*e;
+  const y=tile.sy+(tile.ty-tile.sy)*e;
+  drawTile(fctx,tile,x,y);
+  return p>=1;
+}
+
+function drawCrispFinal(alpha){
+  mctx.save();
+  mctx.globalAlpha=alpha;
+  mctx.drawImage(off,0,0,off.width,off.height,0,0,W,H);
+  mctx.restore();
+}
+
+function loop(now){
+  spawn(now);
+  fctx.clearRect(0,0,W,H);
+
+  const still=[];
+  for(const tile of active){
+    if(drawFalling(tile,now)){
+      drawTile(mctx,tile,tile.tx,tile.ty);
+    } else still.push(tile);
+  }
+  active=still;
+
+  if(queue.length===0 && active.length===0){
+    if(!doneShown){
+      doneShown=true;
+      doneAt=now;
+
+      // hide loader bubble + show stickers
+      overlayLayer.classList.add("show");
+    }
+    const t=Math.min(1,(now-doneAt)/CFG.finalFadeMs);
+    drawCrispFinal(t);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+function start(){
+  resizeAll();
+  startTime=performance.now();
+  requestAnimationFrame(loop);
+}
+
+/* no click-to-restart anymore */
+window.addEventListener("resize",()=>setTimeout(start,150));
+
+img.onload=start;
+img.onerror=()=>console.error("Couldn’t load:", IMAGE_SRC);
+</script>
+
+</body>
+</html>

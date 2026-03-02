@@ -6,8 +6,9 @@ Welcome to my personal portfolio site — built from scratch using HTML, CSS, an
 - **Spin the Wheel** app with user-defined categories, dynamic colors, and confetti celebration
 - **Japan 2025 Gallery** with slideshows of food and places visited, including auto-play and video support
 - **Arena Game** — a fun experimental project with balls, physics, and a leaderboard
-- **Giraffe Page** — a playful interactive page I built for someone who loves giraffes
+- **Jasmine Birthday Animation** — a tile-by-tile image build with animated overlays
 - Clean, responsive design using the Roboto font
+
 
 ## Notable Projects
 
@@ -21,9 +22,8 @@ A fully customizable spinner built with JavaScript and HTML5 Canvas — categori
 ### Arena
 A prototype-style game where balls move around and interact with the environment. Includes a **leaderboard** and custom tweaks to experiment with mechanics.
 
-### Giraffe Surprise
-A lighthearted interactive page designed for someone special who likes giraffes 🦒.  
-It features dialogue, playful Yes/No buttons, and multiple giraffe animations for fun.
+### Birthday Animation
+A full-screen mosaic animation where an image builds tile by tile over a few seconds. After completion, animated dog overlays appear. Built using HTML5 Canvas and custom animation timing logic.
 
 ## How to View
 Check it out live: [https://z3phyrus76.github.io/My-website](https://z3phyrus76.github.io/My-website/)
